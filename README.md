@@ -1,7 +1,12 @@
-Haxe-GL-Fluid
+Haxe OpenGL Fluid
 =============
 
-Cross platform openGL grid-based fluid simulation with rigid body integration
+Cross platform OpenGL grid-based fluid simulation with rigid body integration
 
+Current State:
+- first pass of navier-stokes fluid sim is functional
+- Simple OGL nape physics renderer
 
-- Work in progress and A long way from complete
+Next steps:
+- Maintain a constant aspect ratio in the fluid sim
+- Handle velocity map from nape
