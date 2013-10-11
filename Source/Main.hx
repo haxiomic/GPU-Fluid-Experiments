@@ -1,7 +1,9 @@
 /*
 Todo
-Need a better, more general way to track opengl instances
-Understand resize issue on mac os x
+- Need a better, more general way to track opengl instances
+- Understand resize issue on mac os x
+- Move shaders to Assets
+- Create a core gemoetry class, move fast circle to it
 
 
 Bug fixes to main distro:

@@ -6,4 +6,9 @@
 ehthumbs.db
 Thumbs.db
 
+
 Export/
+
+*.pdf
+
+/*.png
