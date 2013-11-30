@@ -36,7 +36,7 @@ Investigate staggered grid (see fluid_notes.pdf)
 eg, store velocity (only) at center of edges rather than at the center of the squares
 
 #! todo
-Convert to new grasshopper shaders
+Aspect Ratio Fix
 Should dye be a floating point?
 Add particle advection
 Proper mouse/interaction/force handling
@@ -44,6 +44,8 @@ replace npot textures with pot textures for speed
 better design http://prideout.net/blog/?p=58
 fix openFL call to GL.bindFramebuffer(..., null), on ios this should bind to 'defaultFramebuffer' found in UIStageView.mm 
 check out float packing functions https://github.com/MegaJiXiang/InfiniSurv/blob/master/ArtResources/Shaders/Fluid_Diffusion.fsh for fallback
+
+'Height Driven, Square Clip Space'
 */
 import flash.Lib;
 
@@ -69,7 +71,6 @@ class Fluid {
 	private var calculateDiv:FluidPrograms.Divergence = null;
 	private var pressureSolve:FluidPrograms.PressureSolver = null;
 	private var pgradientSubtract:FluidPrograms.PGradientSubtract = null;
-	private var edgeBoundary:FluidPrograms.EdgeBoundary = null;
 	//Scene
 	private var programs:Array<Program>;
 	private var buffers:Array<GLBuffer>;
@@ -113,8 +114,7 @@ class Fluid {
 
 		//Load floating point extension in browser
 		#if js
-			//untyped __js__("openfl.gl.GL.nmeContext.getExtension('OES_texture_float');");
-			GL.nmeContext.getExtension('OES_texture_float');
+			GL.getExtension('OES_texture_float');
 		#end
 	}
 
@@ -125,7 +125,8 @@ class Fluid {
 		var W:Int    = simWidth;
 		var H:Int    = simHeight;
 		var dataKind = GL.FLOAT;
-		#if ios dataKind = 0x8D61; #end //GL_HALF_FLOAT_OES for iOS, as most iPad2 doesn't support GL_FLOAT
+		#if ios dataKin
+		d = 0x8D61; #end //GL_HALF_FLOAT_OES for iOS, as most don't seem to support GL_FLOAT
 
 		//Initiate
 		function pushTarget2P(t:RenderTarget2P){
@@ -178,28 +179,29 @@ class Fluid {
 
 		pgradientSubtract = new FluidPrograms.PGradientSubtract();
 		programs.push(pgradientSubtract);
-
-		edgeBoundary      = new FluidPrograms.EdgeBoundary();
-		programs.push(edgeBoundary);
 	}
 
 	private function setProgramsParams(){
 		//resolution
 		var invSimWidth:Float = 1/simWidth;
 		var invSimHeight:Float = 1/simHeight;
+		var aspectRatio = simWidth/simHeight;
 
 		GL.useProgram(advect.glProgram);
 		GL.uniform2f(advect.invresolution, invSimWidth, invSimHeight);
+		GL.uniform1f(advect.aspectRatio, aspectRatio);
 		GL.useProgram(applyForces.glProgram);
 		GL.uniform2f(applyForces.invresolution, invSimWidth, invSimHeight);
+		GL.uniform1f(applyForces.aspectRatio, aspectRatio);
 		GL.useProgram(calculateDiv.glProgram);
 		GL.uniform2f(calculateDiv.invresolution, invSimWidth, invSimHeight);
+		GL.uniform1f(calculateDiv.aspectRatio, aspectRatio);
 		GL.useProgram(pressureSolve.glProgram);
 		GL.uniform2f(pressureSolve.invresolution, invSimWidth, invSimHeight);
+		GL.uniform1f(pressureSolve.aspectRatio, aspectRatio);
 		GL.useProgram(pgradientSubtract.glProgram);
 		GL.uniform2f(pgradientSubtract.invresolution, invSimWidth, invSimHeight);
-		GL.useProgram(edgeBoundary.glProgram);
-		GL.uniform2f(edgeBoundary.invresolution, invSimWidth, invSimHeight);
+		GL.uniform1f(pgradientSubtract.aspectRatio, aspectRatio);
 
 		//grid scale
 		GL.useProgram(advect.glProgram);
@@ -283,8 +285,7 @@ class Fluid {
 		GL.uniform1i(advect.advected, 1);
 
 		//Set other params
-		GL.uniform1f(advect.dt, dt);
-		GL.uniform2f(advect.AByV, 1, 1);	 	 
+		GL.uniform1f(advect.dt, dt);	 
 
 		//Framebuffer 
 		GL.bindFramebuffer(GL.FRAMEBUFFER, velocity.writeFBO);
@@ -309,7 +310,6 @@ class Fluid {
 
 		//Set other params
 		GL.uniform1f(advect.dt, dt);
-		GL.uniform2f(advect.AByV, 1, 1);//#! set to ratio of resolution: A.resolution/V.resolution
 
 		GL.bindFramebuffer(GL.FRAMEBUFFER, dye.writeFBO);
 		GL.drawArrays(GL.TRIANGLES, 0, 6);
@@ -325,7 +325,7 @@ class Fluid {
 		GL.uniform1i(applyForces.velocity, 0);
 		GL.uniform1f(applyForces.time, time);	
 		//GL.uniform2f(applyForces.mouse, (stage.mouseX)/stage.stageWidth, (stage.stageHeight-stage.mouseY)/stage.stageHeight);	 	 
-		GL.uniform2f(applyForces.mouse, (Math.sin(time/2)/3)+.5, (Math.sin(time/1.79+0.3*time)/3)+.5);	 	 
+		GL.uniform2f(applyForces.mouse, Math.cos(time/2)*.8, Math.sin(time/Math.exp(1))*.8);
 
 		GL.bindFramebuffer(GL.FRAMEBUFFER, velocity.writeFBO);
 		GL.drawArrays (GL.TRIANGLES, 0, 6);
@@ -341,7 +341,7 @@ class Fluid {
 		GL.uniform1i(applyForces.velocity, 0);
 		GL.uniform1f(applyForces.time, time);	
 		//GL.uniform2f(applyForces.mouse, (stage.mouseX)/stage.stageWidth, (stage.stageHeight-stage.mouseY)/stage.stageHeight);	 	 
-		GL.uniform2f(applyForces.mouse, (Math.sin(time/2)/3)+.5, (Math.sin(time/1.79+0.3*time)/3)+.5);	 	 
+		GL.uniform2f(applyForces.mouse, Math.cos(time/2)*.8, Math.sin(time/Math.exp(1))*.8);	 	 
 
 		GL.bindFramebuffer(GL.FRAMEBUFFER, dye.writeFBO);
 		GL.drawArrays (GL.TRIANGLES, 0, 6);
@@ -404,48 +404,6 @@ class Fluid {
 		velocity.swap();
 	}
 
-	private inline function edgeBoundaries(){
-		//order: left top right bottom
-		/*GL.useProgram(edgeBoundary.glProgram);
-		GL.vertexAttribPointer(edgeBoundary.vertexPosition, 2, GL.FLOAT, false, 0, 0);
-		//Velocity pass
-		GL.bindFramebuffer(GL.FRAMEBUFFER, velocity.readFBO);
-		GL.activeTexture(GL.TEXTURE0);
-		GL.bindTexture(GL.TEXTURE_2D, velocity.read);
-		GL.uniform1i(edgeBoundary.field, 0);
-		GL.uniform1f(edgeBoundary.multiplier, -1);
-
-		//left
-		GL.uniform2f(edgeBoundary.offset, 1, 0);
-		GL.drawArrays(GL.LINES, 0, 2);
-		//top
-		GL.uniform2f(edgeBoundary.offset, 0, -1);
-		GL.drawArrays(GL.LINES, 2, 2);
-		//right
-		GL.uniform2f(edgeBoundary.offset, -1, 0);
-		GL.drawArrays(GL.LINES, 4, 2);
-		//bottom
-		GL.uniform2f(edgeBoundary.offset, 0, 1);
-		GL.drawArrays(GL.LINES, 6, 2);
-
-		//Pressure pass
-		GL.bindFramebuffer(GL.FRAMEBUFFER, pressure.readFBO);
-		GL.bindTexture(GL.TEXTURE_2D, pressure.read);
-		GL.uniform1f(edgeBoundary.multiplier, 1);
-
-		//left
-		GL.uniform2f(edgeBoundary.offset, 1, 0);
-		GL.drawArrays(GL.LINES, 0, 2);
-		//top
-		GL.uniform2f(edgeBoundary.offset, 0, -1);
-		GL.drawArrays(GL.LINES, 2, 2);
-		//right
-		GL.uniform2f(edgeBoundary.offset, -1, 0);
-		GL.drawArrays(GL.LINES, 4, 2);
-		//bottom
-		GL.uniform2f(edgeBoundary.offset, 0, 1);
-		GL.drawArrays(GL.LINES, 6, 2);*/
-	}
 	
 	public inline function setSimSize(w:Int, h:Int){
 		simWidth = w;

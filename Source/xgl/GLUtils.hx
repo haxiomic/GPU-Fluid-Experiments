@@ -17,7 +17,7 @@ class GLUtils
 	public static inline var mediumpfloat:String = "precision mediump float;";
 	public static inline var lowpfloat:String = "precision lowp float;";
 
-	public static var quad:Float32Array = new Float32Array ([ 
+	public static var unitQuad:Float32Array = new Float32Array ([ 
 													  -1.0,-1.0,
 													   1.0,-1.0,
 													  -1.0, 1.0,

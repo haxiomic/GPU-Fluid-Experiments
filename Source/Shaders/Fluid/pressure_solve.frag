@@ -4,6 +4,7 @@ uniform sampler2D divergence;
 uniform float alpha;//alpha = -(dx)^2, where dx = grid cell size
 
 varying vec2 texCoord;
+varying vec2 p;
 
 void main(void){
   // left, right, bottom, and top x samples

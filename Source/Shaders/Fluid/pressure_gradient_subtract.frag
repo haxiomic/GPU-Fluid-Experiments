@@ -4,6 +4,7 @@ uniform sampler2D velocity;
 uniform float halfrdx;
 
 varying vec2 texCoord;
+varying vec2 p;
 
 void main(void){
   //texelSize = 1/resolution;

@@ -120,8 +120,8 @@ class Main extends Sprite {
 	}
 
 	inline function fluidSimSize():Array<Int>{
-		var f:Float = 1/1;
-		#if js 	f = 1/5; #end
+		var f:Float = 1/4;
+		#if js 	f = 1/4; #end
 		#if ios f = 1/7; #end 
 
 		var simSize:Array<Int> = new Array<Int>();
@@ -152,12 +152,6 @@ class Main extends Sprite {
 		#if ios
 			screenBuffer = new GLFramebuffer(GL.version, GL.getParameter(GL.FRAMEBUFFER_BINDING));//GL.getParameter(GL.FRAMEBUFFER_BINDING) was enabled because of chaneges to OGLExport.cpp
 		#end
-		#if cpp
-			@:cppFileCode("#include <opengl/OGLExport.cpp>")
-			untyped __cpp__("int wdrwr = 0");
-			//untyped __cpp__("int val;glGetIntegerv(0x8CA6,&val)")
-		#end
-
 	}
 
 	function setupDrawingGL(){
@@ -169,7 +163,7 @@ class Main extends Sprite {
 		//Display to Screen Quad
 		displayQuad = GL.createBuffer();
 		GL.bindBuffer(GL.ARRAY_BUFFER, displayQuad);
-		GL.bufferData(GL.ARRAY_BUFFER, GLUtils.quad, GL.STATIC_DRAW);
+		GL.bufferData(GL.ARRAY_BUFFER, GLUtils.unitQuad, GL.STATIC_DRAW);
 		buffers.push(displayQuad);
 	}
 
@@ -183,11 +177,9 @@ class Main extends Sprite {
 		dt = 1/60;
 
 		physicsSim.step(dt);
-
 		//fluidSim.step(dt);
 
 		napeGLRenderer.draw(physicsSim.space);
-
 		renderTextureToScreen(napeGLRenderer.display);	//nape
 		//renderTextureToScreen(fluidSim.dye.read);		//fluid
 	}
