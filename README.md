@@ -9,7 +9,7 @@ Current State:
 
 Next todo's:
 - Needs updating to compile with the latest OpenFL
-~~- Maintain a constant aspect ratio in the fluid sim~~
+- ~~Maintain a constant aspect ratio in the fluid sim~~
 - Handle velocity map from nape
 - Advect verticies
 
