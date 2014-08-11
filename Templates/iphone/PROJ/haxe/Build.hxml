@@ -1,4 +1,0 @@
--main ApplicationMain ::HAXE_FLAGS::
--D iphone
--D ios
---macro allowPackage("flash")

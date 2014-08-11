@@ -1,27 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
 	
-	<meta title="OpenGL Fluid" package="com.haxiomic.OGLFluid" version="0.0.0" company="Haxiomic" />
-	<app main="Main" path="Export" file="Fluid" />
-	<!-- #! iOS doesn't like these window settings -->
-	<!--<window width="800" height="600" orientation="portrait" fps="60" background="0x000000" resizable="true" borderless="false" vsync="false" fullscreen="false" antialiasing="0" require-shaders="true"/>-->
-	<window fps="60" background="0x000000" vsync="false" require-shaders="true" />
-	<window unless="mobile" resizable="true" borderless="false" antialiasing="0" fullscreen="false" /><!-- non-ios config -->
-	<window unless="desktop" width="0" height="0"/>
-	<window if="desktop" width="768" height="512"/>
-	<window if="mobile" orientation="landscape" resizable="false"/>
+	<meta title="GLFluid" package="com.haxiomic.glfluid" version="1.0.0" company="Haxiomic" />
+	<app main="Main" path="Export" file="GLFluid" />
 	
 	<source path="Source" />
 	
-	<haxelib name="openfl" />
-	<haxelib name="nape" />
-	
-	<assets path="Assets" rename="assets" exclude="nme.svg" />
-	<assets path="Source/Shaders" rename="shaders" />
-	<assets path="Source/Shaders/Fluid" rename="shaders/fluid" />
-	
-	<icon path="Assets/nme.svg" />
+	<haxelib name="lime" />
+	<haxelib name="shaderblox" />
 
-	<template path="Templates" />
-	
 </project>
