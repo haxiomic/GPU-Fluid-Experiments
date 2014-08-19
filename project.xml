@@ -8,5 +8,6 @@
 	
 	<haxelib name="lime" />
 	<haxelib name="shaderblox" />
+	<haxelib name="gltoolbox" />
 
 </project>

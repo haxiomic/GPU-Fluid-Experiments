@@ -1,12 +1,12 @@
 package;
 
+import gltoolbox.render.RenderTarget2Phase;
+import gltoolbox.render.RenderTarget;
 import lime.graphics.GLRenderContext;
 import lime.graphics.opengl.GLBuffer;
 import lime.graphics.opengl.GLTexture;
 import lime.math.Vector2;
 import lime.utils.Float32Array;
-import render.RenderTarget;
-import render.RenderTarget2Phase;
 import shaderblox.ShaderBase;
 
 class GPUFluid{
@@ -55,7 +55,7 @@ class GPUFluid{
 		gl.bufferData(gl.ARRAY_BUFFER, boundaryArray(this.width, this.height), gl.STATIC_DRAW);
 
 		//create texture
-		var simulationTextureFactory = function(width:Int, height:Int):GLTexture{
+		var simulationTextureFactory = function(gl:GLRenderContext, width:Int, height:Int):GLTexture{
 			//create basic non-power of two texture
 			var type = gl.RGB;
 			var dataKind = gl.FLOAT;
@@ -198,7 +198,7 @@ class GPUFluid{
 		velocityRenderTarget.swap();
 	}
 
-	inline function renderShaderTo(shader:ShaderBase, target:render.ITargetable){
+	inline function renderShaderTo(shader:ShaderBase, target:gltoolbox.render.ITargetable){
 		shader.activate(true, true);
 		target.activate();
 		gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -206,7 +206,7 @@ class GPUFluid{
 	}
 
 	//Static Geometry
-	function innerQuadArray(width:Int, height:Int)return new Float32Array(
+	function innerQuadArray(width:Int, height:Int)return new Float32Array(//absolute coordinates wrt texture size (not unit)
 		[
 			1.0, 	   1.0,
 			width-1.0, 1.0,
