@@ -2,6 +2,7 @@ TODO:
 	- Use power of two textures in fluid for speed
 	- handle resize
 	- deal with cellSize and pressureIterations
+	- there's an issue with the aspect ratio
 
 - Reading rigid body force data back to CPU with gl.readpixels:
 	- [http://concord-consortium.github.io/lab/experiments/webgl-gpgpu/webgl.html]()
