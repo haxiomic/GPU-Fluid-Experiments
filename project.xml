@@ -3,8 +3,10 @@
 	
 	<meta title="GLFluid" package="com.haxiomic.glfluid" version="1.0.0" company="Haxiomic" />
 	<app main="Main" path="Export" file="GLFluid" />
-	<!-- <window width="800" height="600" /> -->
-	<!-- <window width="1000" height="100" /> -->
+
+	<!-- <window width="800" height="600"/> -->
+	<window hardware="true" allow-shaders="true" require-shaders="true" depth-buffer="false" stencil-buffer="false" />
+	<window fullscreen="false" resizable="true" borderless="false" vsync="false" />
 
 	<source path="Source" />
 	

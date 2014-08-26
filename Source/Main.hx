@@ -28,7 +28,6 @@ class Main extends Application {
 	//UI
 	var isMouseDown:Bool = false;
 	var mouse = new Vector2();
-	var mouseVelocity = new Vector2();
 	var mouseClipSpace = new Vector2();
 	var mouseVelocityClipSpace = new Vector2();
 
@@ -37,7 +36,9 @@ class Main extends Application {
 	public function new () {
 		super();
 	}
-	
+
+
+	var lastMouse = new Vector2();
 	public override function init (context:RenderContext):Void {
 		switch (context) {
 			case OPENGL (gl):
@@ -57,7 +58,12 @@ class Main extends Application {
 				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
 				mouseForceShader.mouseVelocityClipSpace.data = mouseVelocityClipSpace;
 
-				fluid = new GPUFluid(gl, Math.round(window.width), Math.round(window.height), 8, 16);
+				var scaleFactor = 1/1;
+				#if js
+					scaleFactor = 1/4;
+				#end
+
+				fluid = new GPUFluid(gl, Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor), 8, 18);
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
@@ -67,27 +73,43 @@ class Main extends Application {
 			default:
 				trace('RenderContext \'$context\' not supported');
 		}
+
+		lastMouse.x = mouse.x;
+		lastMouse.y = mouse.y;
 	}
 
+	var dt:Float = 0.016;
 	public override function render (context:RenderContext):Void {
-		// var now = haxe.Timer.stamp();
-		// var dt = now - time;
-		// time = now;
+		//update mouse velocity
+		mouseVelocityClipSpace.x = (mouse.x - lastMouse.x);
+		mouseVelocityClipSpace.y = -(mouse.y - lastMouse.y);
+
 		updateDyeShader.isMouseDown.set(isMouseDown);
 		mouseForceShader.isMouseDown.set(isMouseDown);
+
 		//step physics
-		fluid.step(1/60);
+		fluid.step(dt);
 
 		particles.flowVelocityField = fluid.velocityRenderTarget.readFromTexture;
-		particles.step(1/60);
+		particles.step(dt);
 
 		//clear screen
 		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
 		gl.clearColor(0,0,0,1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
+		//additive blending
+		gl.enable(gl.BLEND);
+		gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
+		gl.blendEquation(gl.FUNC_ADD);
+
 		//render
-		// renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
+		renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
 		renderParticlesToScreen();
+
+		gl.disable(gl.BLEND);
+
+		lastMouse.x = mouse.x;
+		lastMouse.y = mouse.y;
 	}
 
 	inline function renderTextureToScreen(texture:GLTexture){
@@ -115,11 +137,14 @@ class Main extends Application {
 
 		//draw points
 		renderParticlesShader.activate(true, true);
-		gl.enable(gl.BLEND);
-		gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
-		gl.blendEquation(gl.FUNC_ADD);
+		//additive blending
+		// gl.enable(gl.BLEND);
+		// gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
+		// gl.blendEquation(gl.FUNC_ADD);
+
 		gl.drawArrays(gl.POINTS, 0, particles.particleData.width*particles.particleData.height);
-		gl.disable(gl.BLEND);
+
+		// gl.disable(gl.BLEND);
 		renderParticlesShader.deactivate();
 	}
 
@@ -131,31 +156,19 @@ class Main extends Application {
 	inline function windowToClipSpaceX(x:Float)return (x/window.width)*2 - 1;
 	inline function windowToClipSpaceY(y:Float)return ((window.height-y)/window.height)*2 - 1;
 
-	override function onMouseDown( x : Float , y : Float , button : Int ) this.isMouseDown = true;
-	override function onMouseUp( x : Float , y : Float , button : Int )   this.isMouseDown = false;
-	var firstMousePoint = true;
-	var mouseMoveTime:Float;
+	override function onMouseDown( x : Float , y : Float , button : Int ){
+		this.isMouseDown = true;
+	}
+	override function onMouseUp( x : Float , y : Float , button : Int ){
+		this.isMouseDown = false;
+	}
+
 	override function onMouseMove( x : Float , y : Float , button : Int ) {
-		var now = haxe.Timer.stamp();
-
-		if(!firstMousePoint){
-			// var dt = now - mouseMoveTime;
-			var dt = 1/60;
-			mouseVelocity.setTo((x - mouse.x)/dt, (y - mouse.y)/dt);
-		}
-
 		mouse.setTo(x, y);
 		mouseClipSpace.setTo(
 			windowToClipSpaceX(x),
 			windowToClipSpaceY(y)
 		);
-		mouseVelocityClipSpace.setTo(
-			(mouseVelocity.x/window.width)*2,
-			-(mouseVelocity.y/window.height)*2
-		);
-
-		firstMousePoint = false;
-		mouseMoveTime = now;
 	}
 
 	override function onKeyUp( keyCode : Int , modifier : Int ){
@@ -173,13 +186,13 @@ class ScreenTexture extends ShaderBase {}
 
 @:vert('
 	void main(){
+		set();
 		//generate color
 		vec2 v = texture2D(particleData, particleUV).ba;
 		float lv = length(v);
-		vec3 cvec = vec3(sin(lv/3.0)*1.5-lv*lv*0.7, lv*lv*30.0, lv+lv*lv*10.0);
-		color = vec4(vec3(0.5, 0.3, 0.13)*0.3+cvec*1., 1.);
 
-		set();
+		vec3 cvec = vec3(sin(lv/3.0)*1.5-lv*lv*0.7, lv*lv*30.0, lv+lv*lv*10.0);
+		color = vec4(vec3(0.5, 0.3, 0.13)*0.1+cvec*1., 1.);
 	}
 ')
 class ColorParticleMotion extends GPUParticles.RenderParticles{}
@@ -191,16 +204,18 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 
 	vec2 mouse = clipToSimSpace(mouseClipSpace);
 	vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
-	float mouseSpeed = length(mouseVelocity);
 
 	void main(){
 		if(isMouseDown){			
 			vec2 displacement = mouse - p;
 			float l = length(displacement);
 			float R = 0.05;
-			float m = dt*exp(-l/R);
-			
-			color.r += m*3.;
+			float m = exp(-l/R);
+			m*=m;
+				
+			color.r += m*.1;
+			color.g += m*.5;
+			color.b += m*.2;
 		}
 
 		gl_FragColor = color;
@@ -215,16 +230,16 @@ class MouseDye extends GPUFluid.UpdateDye{}
 
 	vec2 mouse = clipToSimSpace(mouseClipSpace);
 	vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
-	float mouseSpeed = length(mouseVelocity);
 
 	void main(){
 		if(isMouseDown){
 			vec2 displacement = mouse - p;
 			float l = length(displacement);
-			float R = 0.08;
-			float m = dt*exp(-l/R);
+			float R = 0.025;
+			float m = exp(-l/R); //drag coefficient
+			m*=m;
 
-			v += (mouseVelocity*200. - v)*m*m*10.;
+			v += (mouseVelocity - v)*m;
 		}
 
 		gl_FragColor = vec4(v, 0, 1.);

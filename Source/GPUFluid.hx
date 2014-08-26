@@ -45,6 +45,7 @@ class GPUFluid{
 
 		//setup gl
 		#if js //load floating point extension
+			gl.getExtension('OES_texture_float_linear');
 			gl.getExtension('OES_texture_float');
 		#end
 
@@ -53,12 +54,14 @@ class GPUFluid{
 		renderQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, width, height, gl.TRIANGLE_STRIP);
 
 		//create texture
-		var simulationTextureFactory = gltoolbox.TextureTools.floatTextureFactoryRGBA;//seems faster with rgba over rgb!
+		//seems to run fast with rgba instead of rgb
+		var linearFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.LINEAR);
+		var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
 
-		velocityRenderTarget = new RenderTarget2Phase(gl, simulationTextureFactory, width, height);
-		pressureRenderTarget = new RenderTarget2Phase(gl, simulationTextureFactory, width, height);
-		divergenceRenderTarget = new RenderTarget(gl, simulationTextureFactory, width, height);
-		dyeRenderTarget = new RenderTarget2Phase(gl, simulationTextureFactory, width, height);
+		velocityRenderTarget = new RenderTarget2Phase(gl, linearFactory, width, height);
+		pressureRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
+		divergenceRenderTarget = new RenderTarget(gl, nearestFactory, width, height);
+		dyeRenderTarget = new RenderTarget2Phase(gl, linearFactory, width, height);
 
 		//create shaders
 		advectShader = new Advect();

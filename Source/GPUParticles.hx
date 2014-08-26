@@ -25,7 +25,7 @@ class GPUParticles{
 
 	var textureQuad:GLBuffer;
 
-	public function new(gl:GLRenderContext /*, max:Int*/){
+	public function new(gl:GLRenderContext, max:Int = 600000){
 		this.gl = gl;
 
 		#if js //load floating point texture extension
@@ -39,7 +39,7 @@ class GPUParticles{
 		textureQuad = GeometryTools.createQuad(gl, 0, 0, 1, 1);
 
 		//setup particle data
-		var dataWidth:Int = 1024;
+		var dataWidth:Int = Math.ceil( Math.sqrt(max) );
 		var dataHeight:Int = dataWidth;
 
 		//create particle data texture
@@ -77,14 +77,14 @@ class GPUParticles{
 		stepParticlesShader.dt.data = dt;
 
 		stepParticlesShader.particleData.data = particleData.readFromTexture;
-		renderShader(stepParticlesShader, particleData);
+		renderShaderTo(stepParticlesShader, particleData);
 	}
 
 	public inline function reset(){
-		renderShader(inititalConditionsShader, particleData);
+		renderShaderTo(inititalConditionsShader, particleData);
 	}
 
-	inline function renderShader(shader:ShaderBase, target:RenderTarget2Phase){
+	inline function renderShaderTo(shader:ShaderBase, target:RenderTarget2Phase){
 		gl.viewport(0, 0, target.width, target.height);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, target.writeFrameBufferObject);
 
@@ -120,7 +120,7 @@ class GPUParticles{
 	attribute vec2 vertexPosition;
 	varying vec2 texelCoord;
 
-	void main() {
+	void main(){
 		texelCoord = vertexPosition;
 		gl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );//converts to clip space	
 	}
@@ -131,22 +131,22 @@ class GPUParticles{
 class TextureShader extends ShaderBase{}
 
 @:frag('
-	uniform float dt;
-	uniform sampler2D particleData;
-
-	vec2 p = texture2D(particleData, texelCoord).rg;
-	vec2 v = texture2D(particleData, texelCoord).ba;
-')
-class ParticleBase extends TextureShader{}
-
-@:frag('
 	void main(){
-		vec2 ip = vec2((texelCoord.x)*2.0-1.0, (texelCoord.y)*2.-1.);
+		vec2 ip = vec2((texelCoord.x)*2.0-1.0, (texelCoord.y)*2.0 - 1.0);
 		vec2 iv = vec2(0,0);
 		gl_FragColor = vec4(ip, iv);
 	}
 ')
 class InitialConditions extends TextureShader{}
+
+@:frag('
+	uniform float dt;
+	uniform sampler2D particleData;
+
+	vec2 p = texture2D(particleData, texelCoord).xy;
+	vec2 v = texture2D(particleData, texelCoord).zw;
+')
+class ParticleBase extends TextureShader{}
 
 @:frag('
 	uniform bool flowEnabled;
@@ -156,7 +156,7 @@ class InitialConditions extends TextureShader{}
 
 	void main(){
 		if(flowEnabled){
-			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).rg * flowScale;//(converts clip-space p to texel coordinates)
+			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;//(converts clip-space p to texel coordinates)
 			vec2 dv = vf - v;
 			
 			v += dv * dragCoefficient;
@@ -173,8 +173,8 @@ class StepParticles extends ParticleBase{}
 	attribute vec2 particleUV;
 	varying vec4 color;
 
-	vec2 p = texture2D(particleData, particleUV).rg;
-	vec2 v = texture2D(particleData, particleUV).ba;
+	vec2 p = texture2D(particleData, particleUV).xy;
+	vec2 v = texture2D(particleData, particleUV).zw;
 	
 	void set(){
 		gl_PointSize = 1.0;
@@ -182,8 +182,9 @@ class StepParticles extends ParticleBase{}
 	}
 
 	void main(){
-		color = vec4(1.0, 1.0, 1.0, 1.0);
 		set();
+
+		color = vec4(1.0, 1.0, 1.0, 1.0);
 	}
 ')
 @:frag('
