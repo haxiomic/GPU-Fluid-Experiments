@@ -35,8 +35,37 @@ class Main extends Application {
 	
 	public function new () {
 		super();
-	}
 
+		//check and halt Safari browser
+		#if js
+			untyped{
+				var browserString = js.Lib.eval("
+					(function(){
+					    var ua= navigator.userAgent, tem, 
+					    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];
+					    if(/trident/i.test(M[1])){
+					        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];
+					        return 'IE '+(tem[1] || '');
+					    }
+					    if(M[1]=== 'Chrome'){
+					        tem= ua.match(/\\bOPR\\/(\\d+)/)
+					        if(tem!= null) return 'Opera '+tem[1];
+					    }
+					    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
+					    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);
+					    return M.join(' ');
+					})();
+				");
+				var isSafari  = (~/Safari/igm).match(browserString);
+				if(isSafari){
+					this.init = function(c:RenderContext){}
+					this.render = function(c:RenderContext){}
+					alert("There's a bug with Safari's GLSL compiler, until I can track it down, this only works in Chrome and Firefox :[");
+					return;
+				}
+			}
+		#end
+	}
 
 	var lastMouse = new Vector2();
 	public override function init (context:RenderContext):Void {
@@ -239,7 +268,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float m = exp(-l/R); //drag coefficient
 			m*=m;
 
-			v += (mouseVelocity - v)*m;
+			v += (mouseVelocity*1.1 - v)*m;
 		}
 
 		gl_FragColor = vec4(v, 0, 1.);
