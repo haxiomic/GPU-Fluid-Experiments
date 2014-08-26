@@ -1,10 +1,10 @@
 /* Converts to clip space, given resolution of display in pixel space */ 
+attribute vec2 vertexPosition;
+
 uniform vec2 invresolution;
 uniform float aspectRatio;
 
-attribute vec2 vertexPosition;
 varying vec2 texelCoord;
-
 /*
 --- Simulation Position ---
 Clip space where aspect ratio is maintained and height is fixed at 1

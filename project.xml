@@ -3,7 +3,9 @@
 	
 	<meta title="GLFluid" package="com.haxiomic.glfluid" version="1.0.0" company="Haxiomic" />
 	<app main="Main" path="Export" file="GLFluid" />
-	
+	<!-- <window width="800" height="600" /> -->
+	<!-- <window width="1000" height="100" /> -->
+
 	<source path="Source" />
 	
 	<haxelib name="lime" />

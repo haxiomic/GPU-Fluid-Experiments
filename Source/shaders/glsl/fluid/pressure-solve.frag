@@ -1,20 +1,18 @@
-uniform vec2 invresolution; //(same for both the pressure and divergence textures)
 uniform sampler2D pressure;
 uniform sampler2D divergence;
 uniform float alpha;//alpha = -(dx)^2, where dx = grid cell size
 
 varying vec2 texelCoord;
-varying vec2 p;
 
 void main(void){
   // left, right, bottom, and top x samples
   //texelSize = 1./resolution;
-  vec2 L = texture2D(pressure, texelCoord - vec2(invresolution.x, 0)).xy;
-  vec2 R = texture2D(pressure, texelCoord + vec2(invresolution.x, 0)).xy;
-  vec2 B = texture2D(pressure, texelCoord - vec2(0, invresolution.y)).xy;
-  vec2 T = texture2D(pressure, texelCoord + vec2(0, invresolution.y)).xy;
+  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));
+  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));
+  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));
+  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));
 
-  vec2 bC = texture2D(divergence, texelCoord).xy;
+  float bC = texture2D(divergence, texelCoord).x;
 
-  gl_FragColor = vec4( (L + R + B + T + alpha * bC) * .25, 0, 1 );//rBeta = .25
+  gl_FragColor = vec4( (L + R + B + T + alpha * bC) * .25, 0, 0, 1 );//rBeta = .25
 }

@@ -18,14 +18,17 @@ class GPUParticles{
 	public var inititalConditionsShader:InitialConditions;
 	public var stepParticlesShader:StepParticles;
 
-	public var flowVelocityField:GLTexture;
+	public var dragCoefficient(get, set):Float;
+	public var flowScale(get, set):Float;
+	public var flowEnabled(get, set):Bool;
+	public var flowVelocityField(get, set):GLTexture;
 
 	var textureQuad:GLBuffer;
 
 	public function new(gl:GLRenderContext /*, max:Int*/){
 		this.gl = gl;
-		//we'll need floating point textures
-		#if js //load floating point extension
+
+		#if js //load floating point texture extension
 		gl.getExtension('OES_texture_float');
 		#end
 		#if !js
@@ -40,7 +43,7 @@ class GPUParticles{
 		var dataHeight:Int = dataWidth;
 
 		//create particle data texture
-		particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.FloatTextureFactoryRGBA, dataWidth, dataHeight);
+		particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.floatTextureFactoryRGBA, dataWidth, dataHeight);
 
 		//create particle vertex buffers
 		var arrayUVs = new Array<Float>();
@@ -60,19 +63,20 @@ class GPUParticles{
 		inititalConditionsShader = new InitialConditions();
 		stepParticlesShader = new StepParticles();
 
+		//set params
+		this.dragCoefficient = 1;
+		this.flowScale = 1;
+		this.flowEnabled = false;
+
 		//write initial data
 		reset();
 	}
 
-	@:noStack
 	public inline function step(dt:Float){
 		//set position and velocity uniforms
 		stepParticlesShader.dt.data = dt;
 
 		stepParticlesShader.particleData.data = particleData.readFromTexture;
-		stepParticlesShader.advectEnabled.data = (flowVelocityField != null);
-		stepParticlesShader.flowVelocityField.data = flowVelocityField;
-
 		renderShader(stepParticlesShader, particleData);
 	}
 
@@ -94,6 +98,21 @@ class GPUParticles{
 		shader.deactivate();
 
 		target.swap();
+	}
+
+
+	inline function get_dragCoefficient()   return stepParticlesShader.dragCoefficient.data;
+	inline function get_flowScale()         return stepParticlesShader.flowScale.data;
+	inline function get_flowEnabled()       return stepParticlesShader.flowEnabled.data;
+	inline function get_flowVelocityField() return stepParticlesShader.flowVelocityField.data;
+
+	inline function set_dragCoefficient(v:Float)       return stepParticlesShader.dragCoefficient.data = v;
+	inline function set_flowScale(v:Float)             return stepParticlesShader.flowScale.data = v;
+	inline function set_flowEnabled(v:Bool)            return stepParticlesShader.flowEnabled.data = v;
+	inline function set_flowVelocityField(v:GLTexture){
+		if(v!=null)	this.flowEnabled = true;
+		else 		this.flowEnabled = false;
+		return stepParticlesShader.flowVelocityField.data = v;
 	}
 }
 
@@ -130,16 +149,17 @@ class ParticleBase extends TextureShader{}
 class InitialConditions extends TextureShader{}
 
 @:frag('
-	uniform bool advectEnabled;
+	uniform bool flowEnabled;
 	uniform float dragCoefficient;
+	uniform float flowScale;
 	uniform sampler2D flowVelocityField;
 
 	void main(){
-		if(advectEnabled){
-			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).rg*(1./8.);
+		if(flowEnabled){
+			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).rg * flowScale;//(converts clip-space p to texel coordinates)
 			vec2 dv = vf - v;
-			// v+=dv*dt*2.;
-			v = vf;
+			
+			v += dv * dragCoefficient;
 		}
 
 		p+=dt*v;
@@ -156,16 +176,14 @@ class StepParticles extends ParticleBase{}
 	vec2 p = texture2D(particleData, particleUV).rg;
 	vec2 v = texture2D(particleData, particleUV).ba;
 	
-	void set();
+	void set(){
+		gl_PointSize = 1.0;
+		gl_Position = vec4(p, 0.0, 1.0);
+	}
 
 	void main(){
 		color = vec4(1.0, 1.0, 1.0, 1.0);
 		set();
-	}
-
-	void set(){
-		gl_PointSize = 1.0;
-		gl_Position = vec4(p, 0.0, 1.0);
 	}
 ')
 @:frag('

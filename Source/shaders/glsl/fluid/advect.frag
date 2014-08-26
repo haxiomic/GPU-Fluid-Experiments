@@ -1,6 +1,3 @@
-uniform vec2 invresolution;
-uniform float aspectRatio;
-
 uniform sampler2D velocity;
 uniform sampler2D target;
 uniform float dt;
@@ -9,19 +6,13 @@ uniform float rdx; //reciprocal of grid scale, used to scale velocity into simul
 varying vec2 texelCoord;
 varying vec2 p;
 
-vec2 toUnitCoords(vec2 v){
-  return vec2(v.x / aspectRatio + 1.0 , v.y + 1.0)*.5;
-}
-
 void main(void){
-  //texelCoord is relative size of texture we're writing to
   //texelCoord refers to the center of the texel! Not a corner!
-  //velocity should be in relative terms not pixels
-    //A velocity of 1 means it spans the entire dimention of the texture
+  
   vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy;
 
-  //Bilinear Interpolation of the velocity at tracedPos 
-  tracedPos = toUnitCoords(tracedPos)/invresolution; // texel coordinates
+  //Bilinear Interpolation of the target field value at tracedPos 
+  tracedPos = simToTexelSpace(tracedPos)/invresolution; // texel coordinates
   
   vec4 st;
   st.xy = floor(tracedPos-.5)+.5; //left & bottom cell centers
@@ -29,7 +20,7 @@ void main(void){
 
   vec2 t = tracedPos - st.xy;
 
-  st*=invresolution.xyxy; //To unitary coords
+  st*=invresolution.xyxy; //to unitary coords
   
   vec4 tex11 = texture2D(target, st.xy );
   vec4 tex21 = texture2D(target, st.zy );
