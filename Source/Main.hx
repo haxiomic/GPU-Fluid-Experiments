@@ -31,7 +31,8 @@ class Main extends Application {
 	var mouseClipSpace = new Vector2();
 	var mouseVelocityClipSpace = new Vector2();
 
-	var time:Float;
+	var renderParticles:Bool = true;
+	var renderFluid:Bool = true;
 	
 	public function new () {
 		super();
@@ -56,7 +57,7 @@ class Main extends Application {
 					    return M.join(' ');
 					})();
 				");
-				var isSafari  = (~/Safari/igm).match(browserString);
+				var isSafari  = (~/Safari/i).match(browserString);
 				if(isSafari){
 					this.init = function(c:RenderContext){}
 					this.render = function(c:RenderContext){}
@@ -132,8 +133,8 @@ class Main extends Application {
 		gl.blendEquation(gl.FUNC_ADD);
 
 		//render
-		renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
-		renderParticlesToScreen();
+		if(renderFluid)     renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
+		if(renderParticles) renderParticlesToScreen();
 
 		gl.disable(gl.BLEND);
 
@@ -204,6 +205,10 @@ class Main extends Application {
 		switch (keyCode) {
 			case KeyCode.R:
 				reset();
+			case KeyCode.P:
+				renderParticles = !renderParticles;
+			case KeyCode.F:
+				renderFluid = !renderFluid;
 		}
 	}
 }
@@ -231,20 +236,23 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 	uniform vec2 mouseClipSpace;				//clipSpace
 	uniform vec2 mouseVelocityClipSpace;
 
-	vec2 mouse = clipToSimSpace(mouseClipSpace);
-	vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
 
 	void main(){
+		color.xyz *= 0.99;
 		if(isMouseDown){			
+			vec2 mouse = clipToSimSpace(mouseClipSpace);
+			vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
+
 			vec2 displacement = mouse - p;
 			float l = length(displacement);
 			float R = 0.05;
 			float m = exp(-l/R);
 			m*=m;
-				
-			color.r += m*.1;
-			color.g += m*.5;
-			color.b += m*.2;
+			
+			float mouseSpeed = length(mouseVelocity);
+			color.r += m * ((cos(mouseSpeed)+1.)*.05 + mouseSpeed*mouseSpeed/5000.);
+			color.g += m * mouseSpeed*mouseSpeed/1000.;
+			color.b += m * mouseSpeed*mouseSpeed/500.;
 		}
 
 		gl_FragColor = color;
@@ -257,11 +265,11 @@ class MouseDye extends GPUFluid.UpdateDye{}
 	uniform vec2 mouseClipSpace;				//clipSpace
 	uniform vec2 mouseVelocityClipSpace;
 
-	vec2 mouse = clipToSimSpace(mouseClipSpace);
-	vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
-
 	void main(){
 		if(isMouseDown){
+			vec2 mouse = clipToSimSpace(mouseClipSpace);
+			vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
+			
 			vec2 displacement = mouse - p;
 			float l = length(displacement);
 			float R = 0.025;
