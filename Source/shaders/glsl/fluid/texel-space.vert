@@ -5,6 +5,7 @@ uniform vec2 invresolution;
 uniform float aspectRatio;
 
 varying vec2 texelCoord;
+
 /*
 --- Simulation Position ---
 Clip space where aspect ratio is maintained and height is fixed at 1

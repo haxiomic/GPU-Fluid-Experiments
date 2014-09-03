@@ -25,11 +25,14 @@ class Main extends Application {
 	var renderParticlesShader : ColorParticleMotion;
 	var updateDyeShader       : MouseDye;
 	var mouseForceShader      : MouseForce;
-	//UI
+	//Window
 	var isMouseDown:Bool = false;
 	var mouse = new Vector2();
 	var mouseClipSpace = new Vector2();
-	var mouseVelocityClipSpace = new Vector2();
+	var lastMouseClipSpace = new Vector2();
+
+	var time:Float;
+	var lastTime:Float;
 
 	var renderParticles:Bool = true;
 	var renderFluid:Bool = true;
@@ -59,9 +62,9 @@ class Main extends Application {
 				");
 				var isSafari  = (~/Safari/i).match(browserString);
 				if(isSafari){
-					this.init = function(c:RenderContext){}
+					this.init = function(c:RenderContext){}		//nop out graphics calls
 					this.render = function(c:RenderContext){}
-					alert("There's a bug with Safari's GLSL compiler, until I can track it down, this only works in Chrome and Firefox :[");
+					alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this only works in Chrome and Firefox :[");
 					return;
 				}
 			}
@@ -84,16 +87,20 @@ class Main extends Application {
 				mouseForceShader = new MouseForce();
 
 				updateDyeShader.mouseClipSpace.data = mouseClipSpace;
-				updateDyeShader.mouseVelocityClipSpace.data = mouseVelocityClipSpace;
+				updateDyeShader.lastMouseClipSpace.data = lastMouseClipSpace;
 				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
-				mouseForceShader.mouseVelocityClipSpace.data = mouseVelocityClipSpace;
+				mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
 
 				var scaleFactor = 1/1;
+				var fluidIterations = 20;
+				var fluidScale = 32;
+
 				#if js
 					scaleFactor = 1/4;
+					fluidIterations = 20;
 				#end
-
-				fluid = new GPUFluid(gl, Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor), 8, 18);
+				
+				fluid = new GPUFluid(gl, Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor), fluidScale, fluidIterations);
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
@@ -104,16 +111,17 @@ class Main extends Application {
 				trace('RenderContext \'$context\' not supported');
 		}
 
-		lastMouse.x = mouse.x;
-		lastMouse.y = mouse.y;
+		updateLastMouse();
+
+		lastTime = haxe.Timer.stamp();
 	}
 
-	var dt:Float = 0.016;
 	public override function render (context:RenderContext):Void {
-		//update mouse velocity
-		mouseVelocityClipSpace.x = (mouse.x - lastMouse.x);
-		mouseVelocityClipSpace.y = -(mouse.y - lastMouse.y);
+		time = haxe.Timer.stamp();
+		var dt = time - lastTime; //60fps ~ 0.016
+		lastTime = time;
 
+		//update mouse velocity
 		updateDyeShader.isMouseDown.set(isMouseDown);
 		mouseForceShader.isMouseDown.set(isMouseDown);
 
@@ -133,13 +141,12 @@ class Main extends Application {
 		gl.blendEquation(gl.FUNC_ADD);
 
 		//render
-		if(renderFluid)     renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
+		if(renderFluid) renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
 		if(renderParticles) renderParticlesToScreen();
 
 		gl.disable(gl.BLEND);
 
-		lastMouse.x = mouse.x;
-		lastMouse.y = mouse.y;
+		updateLastMouse();
 	}
 
 	inline function renderTextureToScreen(texture:GLTexture){
@@ -167,7 +174,7 @@ class Main extends Application {
 
 		//draw points
 		renderParticlesShader.activate(true, true);
-		//additive blending
+		//additive blending between particles
 		// gl.enable(gl.BLEND);
 		// gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
 		// gl.blendEquation(gl.FUNC_ADD);
@@ -198,6 +205,14 @@ class Main extends Application {
 		mouseClipSpace.setTo(
 			windowToClipSpaceX(x),
 			windowToClipSpaceY(y)
+		);
+	}
+
+	inline function updateLastMouse(){
+		lastMouse.setTo(mouse.x, mouse.y);
+		lastMouseClipSpace.setTo(
+			windowToClipSpaceX(lastMouse.x),
+			windowToClipSpaceY(lastMouse.y)
 		);
 	}
 
@@ -232,27 +247,28 @@ class ScreenTexture extends ShaderBase {}
 class ColorParticleMotion extends GPUParticles.RenderParticles{}
 
 @:frag('
-	uniform bool isMouseDown;
-	uniform vec2 mouseClipSpace;				//clipSpace
-	uniform vec2 mouseVelocityClipSpace;
+	#pragma include("Source/shaders/glsl/geom.glsl")
 
+	uniform bool isMouseDown;
+	uniform vec2 mouseClipSpace;
+	uniform vec2 lastMouseClipSpace;
 
 	void main(){
 		color.xyz *= 0.99;
 		if(isMouseDown){			
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
-			vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
+			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
+			vec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;
 
-			vec2 displacement = mouse - p;
-			float l = length(displacement);
+			float l = distanceToSegment(mouse, lastMouse, p);
 			float R = 0.05;
 			float m = exp(-l/R);
-			m*=m;
-			
-			float mouseSpeed = length(mouseVelocity);
-			color.r += m * ((cos(mouseSpeed)+1.)*.05 + mouseSpeed*mouseSpeed/5000.);
-			color.g += m * mouseSpeed*mouseSpeed/1000.;
-			color.b += m * mouseSpeed*mouseSpeed/500.;
+			m *= m;
+ 			
+			float x = clamp(length(mouseVelocity), 0., 1.)*0.05;
+			color.r += m * (exp(-pow((x+0.15)*3., 2.))*.5 + pow((x-0.46)*1.85, 5.));
+			color.g += m * (x*x*x*x);
+			color.b += m * (x*x);
 		}
 
 		gl_FragColor = color;
@@ -261,22 +277,32 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 class MouseDye extends GPUFluid.UpdateDye{}
 
 @:frag('
+	#pragma include("Source/shaders/glsl/geom.glsl")
+
 	uniform bool isMouseDown;
-	uniform vec2 mouseClipSpace;				//clipSpace
-	uniform vec2 mouseVelocityClipSpace;
+	uniform vec2 mouseClipSpace;
+	uniform vec2 lastMouseClipSpace;
 
 	void main(){
+		v.xy *= 0.999;
+
 		if(isMouseDown){
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
-			vec2 mouseVelocity = clipToSimSpace(mouseVelocityClipSpace);
-			
-			vec2 displacement = mouse - p;
-			float l = length(displacement);
-			float R = 0.025;
-			float m = exp(-l/R); //drag coefficient
-			m*=m;
+			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
+			vec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;
+				
+			//compute tapered distance to mouse line segment
+			float projection;
+			float l = distanceToSegment(mouse, lastMouse, p, projection);
+			float taperFactor = 0.5;//1 => 0 at lastMouse, 0 => no tapering
+			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
 
-			v += (mouseVelocity*1.1 - v)*m;
+			float R = 0.02;
+			float m = exp(-l/R); //drag coefficient
+			m *= m * projectedFraction * projectedFraction;
+
+			float maxSpeed = 0.04 * dx / dt;
+			v += (clamp(mouseVelocity, -maxSpeed, maxSpeed) - v)*m;
 		}
 
 		gl_FragColor = vec4(v, 0, 1.);

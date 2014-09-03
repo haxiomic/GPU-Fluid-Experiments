@@ -6,7 +6,8 @@
 
 	<!-- <window width="800" height="600"/> -->
 	<window hardware="true" allow-shaders="true" require-shaders="true" depth-buffer="false" stencil-buffer="false" />
-	<window fullscreen="false" resizable="true" borderless="false" vsync="false" />
+	<window fullscreen="false" resizable="true" borderless="false" vsync="true" />
+	<window fps="0" />
 
 	<source path="Source" />
 	

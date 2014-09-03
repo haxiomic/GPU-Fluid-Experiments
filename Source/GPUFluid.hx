@@ -17,6 +17,8 @@ class GPUFluid{
 	public var cellSize (default, null) : Float;
 	public var solverIterations         : Int;
 
+	var aspectRatio:Float;
+
 	//Render Targets
 	public var velocityRenderTarget   (default, null) : RenderTarget2Phase;
 	public var pressureRenderTarget   (default, null) : RenderTarget2Phase;
@@ -42,6 +44,7 @@ class GPUFluid{
 		this.height = height;
 		this.cellSize = cellSize;
 		this.solverIterations = solverIterations;
+		this.aspectRatio = this.width/this.height;
 
 		//setup gl
 		#if js //load floating point extension
@@ -170,7 +173,6 @@ class GPUFluid{
 	inline function passBaseUniforms(shader:FluidBase){
 		if(shader==null)return;
 		//set uniforms
-		var aspectRatio = width/height;
 		shader.aspectRatio.set(aspectRatio);
 		shader.invresolution.data.x = 1/width;
 		shader.invresolution.data.y = 1/height;
@@ -178,12 +180,14 @@ class GPUFluid{
 
 	inline function set_applyForcesShader(v:ApplyForces):ApplyForces{
 		this.applyForcesShader = v;
+		this.applyForcesShader.dx.data = this.cellSize;
 		passBaseUniforms(this.applyForcesShader);
 		return this.applyForcesShader;
 	}
 
 	inline function set_updateDyeShader(v:UpdateDye):UpdateDye{
 		this.updateDyeShader = v;
+		this.updateDyeShader.dx.data = this.cellSize;
 		passBaseUniforms(this.updateDyeShader);
 		return this.updateDyeShader;
 	}
@@ -208,29 +212,23 @@ class PressureGradientSubstract extends FluidBase{}
 @:frag('
 	uniform sampler2D velocity;
 	uniform float dt;
+	uniform float dx;
 
 	varying vec2 texelCoord;
 	varying vec2 p;
 
 	vec2 v = texture2D(velocity, texelCoord).xy;
-
-	void main(){
-		gl_FragColor = vec4(v, 0, 1.0);
-	}
 ')
 class ApplyForces extends FluidBase{}
 
 @:frag('
 	uniform sampler2D dye;
 	uniform float dt;
+	uniform float dx;
 
 	varying vec2 texelCoord;
 	varying vec2 p;
 
 	vec4 color = texture2D(dye, texelCoord);
-
-	void main(){
-		gl_FragColor = color;
-	}
 ')
 class UpdateDye extends FluidBase{}
