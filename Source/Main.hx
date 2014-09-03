@@ -1,7 +1,7 @@
 package;
 
+import gltoolbox.render.RenderTarget;
 import haxe.Timer;
-
 import lime.app.Application;
 import lime.graphics.opengl.*;
 import lime.graphics.GLRenderContext;
@@ -20,6 +20,8 @@ class Main extends Application {
 	var textureQuad:GLBuffer = null; 
 	//Framebuffers
 	var screenBuffer:GLFramebuffer = null;	//null for all platforms exlcuding ios, where it references the defaultFramebuffer (UIStageView.mm)
+	//Render Targets
+	var offScreenTarget:RenderTarget;
 	//Shaders
 	var screenTextureShader   : ScreenTexture;
 	var renderParticlesShader : ColorParticleMotion;
@@ -29,13 +31,14 @@ class Main extends Application {
 	var isMouseDown:Bool = false;
 	var mouse = new Vector2();
 	var mouseClipSpace = new Vector2();
+	var lastMouse = new Vector2();
 	var lastMouseClipSpace = new Vector2();
 
 	var time:Float;
 	var lastTime:Float;
 
-	var renderParticles:Bool = true;
-	var renderFluid:Bool = true;
+	var renderParticlesEnabled:Bool = true;
+	var renderFluidEnabled:Bool = true;
 	
 	public function new () {
 		super();
@@ -71,15 +74,25 @@ class Main extends Application {
 		#end
 	}
 
-	var lastMouse = new Vector2();
 	public override function init (context:RenderContext):Void {
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
+
 				#if ios //grab default screenbuffer
 					screenBuffer = new GLFramebuffer(gl.version, gl.getParameter(gl.FRAMEBUFFER_BINDING));
 				#end
 				textureQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, 1, 1);
+
+				offScreenTarget = new RenderTarget(gl, 
+					gltoolbox.TextureTools.customTextureFactory(
+						gl.RGBA,
+						gl.UNSIGNED_BYTE,
+						gl.NEAREST
+					),
+					Math.round(window.width/1),
+					Math.round(window.height/1)
+				);
 
 				screenTextureShader = new ScreenTexture();
 				renderParticlesShader = new ColorParticleMotion();
@@ -104,7 +117,7 @@ class Main extends Application {
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
-				particles = new GPUParticles(gl);
+				particles = new GPUParticles(gl, 524288);
 				particles.flowScale = 1/fluid.cellSize;
 				particles.dragCoefficient = 1;
 			default:
@@ -132,27 +145,35 @@ class Main extends Application {
 		particles.step(dt);
 
 		//clear screen
-		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+
+		//render to offScreen
+		gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, offScreenTarget.frameBufferObject);
+		// gl.viewport (0, 0, window.width, window.height);
+		// gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+
 		gl.clearColor(0,0,0,1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
-		//additive blending
+
+		// additive blending
 		gl.enable(gl.BLEND);
 		gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
 		gl.blendEquation(gl.FUNC_ADD);
 
-		//render
-		if(renderFluid) renderTextureToScreen(fluid.dyeRenderTarget.readFromTexture);
-		if(renderParticles) renderParticlesToScreen();
+		if(renderFluidEnabled) renderTexture(fluid.dyeRenderTarget.readFromTexture);
+		if(renderParticlesEnabled) renderParticles();
 
 		gl.disable(gl.BLEND);
+
+		//render to screen
+		gl.viewport (0, 0, window.width, window.height);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+		renderTexture(offScreenTarget.texture);
 
 		updateLastMouse();
 	}
 
-	inline function renderTextureToScreen(texture:GLTexture){
-		gl.viewport (0, 0, window.width, window.height);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
-
+	inline function renderTexture(texture:GLTexture){
 		gl.bindBuffer (gl.ARRAY_BUFFER, textureQuad);
 
 		screenTextureShader.texture.data = texture;
@@ -162,10 +183,7 @@ class Main extends Application {
 		screenTextureShader.deactivate();
 	}
 
-	inline function renderParticlesToScreen():Void{
-		gl.viewport(0, 0, window.width, window.height);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
-
+	inline function renderParticles():Void{
 		//set vertices
 		gl.bindBuffer(gl.ARRAY_BUFFER, particles.particleUVs);
 
@@ -221,9 +239,9 @@ class Main extends Application {
 			case KeyCode.R:
 				reset();
 			case KeyCode.P:
-				renderParticles = !renderParticles;
+				renderParticlesEnabled = !renderParticlesEnabled;
 			case KeyCode.F:
-				renderFluid = !renderFluid;
+				renderFluidEnabled = !renderFluidEnabled;
 		}
 	}
 }
@@ -254,7 +272,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 	uniform vec2 lastMouseClipSpace;
 
 	void main(){
-		color.xyz *= 0.99;
+		color.xyz *= 0.995;
 		if(isMouseDown){			
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
@@ -265,7 +283,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 			float m = exp(-l/R);
 			m *= m;
  			
-			float x = clamp(length(mouseVelocity), 0., 1.)*0.05;
+			float x = clamp(length(mouseVelocity)*0.01, 0., 1.);
 			color.r += m * (exp(-pow((x+0.15)*3., 2.))*.5 + pow((x-0.46)*1.85, 5.));
 			color.g += m * (x*x*x*x);
 			color.b += m * (x*x);
@@ -297,9 +315,9 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float taperFactor = 0.5;//1 => 0 at lastMouse, 0 => no tapering
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
 
-			float R = 0.02;
+			float R = 0.015;
 			float m = exp(-l/R); //drag coefficient
-			m *= m * projectedFraction * projectedFraction;
+			m *= projectedFraction * projectedFraction;
 
 			float maxSpeed = 0.04 * dx / dt;
 			v += (clamp(mouseVelocity, -maxSpeed, maxSpeed) - v)*m;

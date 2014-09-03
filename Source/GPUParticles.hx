@@ -25,7 +25,7 @@ class GPUParticles{
 
 	var textureQuad:GLBuffer;
 
-	public function new(gl:GLRenderContext, max:Int = 600000){
+	public function new(gl:GLRenderContext, max:Int = 524288){
 		this.gl = gl;
 
 		#if js //load floating point texture extension
@@ -157,9 +157,7 @@ class ParticleBase extends TextureShader{}
 	void main(){
 		if(flowEnabled){
 			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;//(converts clip-space p to texel coordinates)
-			vec2 dv = vf - v;
-			
-			v += dv * dragCoefficient;
+			v += (vf - v) * dragCoefficient;
 		}
 
 		p+=dt*v;
