@@ -19,7 +19,8 @@ class GPUParticles{
 	public var stepParticlesShader:StepParticles;
 
 	public var dragCoefficient(get, set):Float;
-	public var flowScale(get, set):Float;
+	public var flowScaleX(get, set):Float;
+	public var flowScaleY(get, set):Float;
 	public var flowEnabled(get, set):Bool;
 	public var flowVelocityField(get, set):GLTexture;
 
@@ -65,7 +66,8 @@ class GPUParticles{
 
 		//set params
 		this.dragCoefficient = 1;
-		this.flowScale = 1;
+		this.flowScaleX = 1;
+		this.flowScaleY = 1;
 		this.flowEnabled = false;
 
 		//write initial data
@@ -102,12 +104,14 @@ class GPUParticles{
 
 
 	inline function get_dragCoefficient()   return stepParticlesShader.dragCoefficient.data;
-	inline function get_flowScale()         return stepParticlesShader.flowScale.data;
+	inline function get_flowScaleX()         return stepParticlesShader.flowScale.data.x;
+	inline function get_flowScaleY()         return stepParticlesShader.flowScale.data.y;
 	inline function get_flowEnabled()       return stepParticlesShader.flowEnabled.data;
 	inline function get_flowVelocityField() return stepParticlesShader.flowVelocityField.data;
 
 	inline function set_dragCoefficient(v:Float)       return stepParticlesShader.dragCoefficient.data = v;
-	inline function set_flowScale(v:Float)             return stepParticlesShader.flowScale.data = v;
+	inline function set_flowScaleX(v:Float)             return stepParticlesShader.flowScale.data.x = v;
+	inline function set_flowScaleY(v:Float)             return stepParticlesShader.flowScale.data.y = v;
 	inline function set_flowEnabled(v:Bool)            return stepParticlesShader.flowEnabled.data = v;
 	inline function set_flowVelocityField(v:GLTexture){
 		if(v!=null)	this.flowEnabled = true;
@@ -132,7 +136,7 @@ class TextureShader extends ShaderBase{}
 
 @:frag('
 	void main(){
-		vec2 ip = vec2((texelCoord.x)*2.0-1.0, (texelCoord.y)*2.0 - 1.0);
+		vec2 ip = vec2((texelCoord.x), (texelCoord.y)) * 2.0 - 1.0;
 		vec2 iv = vec2(0,0);
 		gl_FragColor = vec4(ip, iv);
 	}
@@ -151,7 +155,7 @@ class ParticleBase extends TextureShader{}
 @:frag('
 	uniform bool flowEnabled;
 	uniform float dragCoefficient;
-	uniform float flowScale;
+	uniform vec2 flowScale;
 	uniform sampler2D flowVelocityField;
 
 	void main(){

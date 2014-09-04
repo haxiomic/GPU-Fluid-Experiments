@@ -107,21 +107,22 @@ class Main extends Application {
 				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
 				mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
 
-				var scaleFactor = 1/1;
+				var scaleFactor = 1/2;
 				var fluidIterations = 20;
 				var fluidScale = 32;
 
 				#if js
-					scaleFactor = 1/4;
-					fluidIterations = 20;
+					scaleFactor = 1/5;
+					fluidIterations = 18;
 				#end
 				
 				fluid = new GPUFluid(gl, Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor), fluidScale, fluidIterations);
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
-				particles = new GPUParticles(gl, 524288);
-				particles.flowScale = 1/fluid.cellSize;
+				particles = new GPUParticles(gl, 262144);
+				particles.flowScaleX = fluid.simToClipSpaceX(1);
+				particles.flowScaleY = fluid.simToClipSpaceY(1);
 				particles.dragCoefficient = 1;
 			default:
 				trace('RenderContext \'$context\' not supported');
@@ -274,7 +275,8 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 	uniform vec2 lastMouseClipSpace;
 
 	void main(){
-		color.xyz *= 0.995;
+		//color.xyz *= 0.995;
+		color.xyz += (0.0 - color.xyz)*0.01;
 		if(isMouseDown){			
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
@@ -328,8 +330,9 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float m = exp(-l/R); //drag coefficient
 			m *= projectedFraction * projectedFraction;
 
-			float maxSpeed = 0.04 * dx / dt;
-			v += (clamp(mouseVelocity, -maxSpeed, maxSpeed) - v)*m;
+			// float maxSpeed = 10.04 * dx / dt;
+			vec2 tv = mouseVelocity;//clamp(mouseVelocity, -maxSpeed, maxSpeed);
+			v += (tv - v)*m;
 		}
 
 		gl_FragColor = vec4(v, 0, 1.);

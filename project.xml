@@ -4,10 +4,11 @@
 	<meta title="GLFluid" package="com.haxiomic.glfluid" version="1.0.0" company="Haxiomic" />
 	<app main="Main" path="Export" file="GLFluid" />
 
-	<!-- <window width="800" height="600"/> -->
+	<!-- <window width="2560" height="1400"/> -->
 	<window hardware="true" allow-shaders="true" require-shaders="true" depth-buffer="false" stencil-buffer="false" />
 	<window fullscreen="false" resizable="true" borderless="false" vsync="true" />
-	<window fps="0" />
+	<window fps="120" unless="html5"/>
+	<window fps="0" if="html5"/>
 
 	<source path="Source" />
 	

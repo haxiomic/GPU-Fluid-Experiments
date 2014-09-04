@@ -17,7 +17,7 @@ class GPUFluid{
 	public var cellSize (default, null) : Float;
 	public var solverIterations         : Int;
 
-	var aspectRatio:Float;
+	public var aspectRatio (default, null) : Float;
 
 	//Render Targets
 	public var velocityRenderTarget   (default, null) : RenderTarget2Phase;
@@ -46,10 +46,12 @@ class GPUFluid{
 		this.solverIterations = solverIterations;
 		this.aspectRatio = this.width/this.height;
 
+		var texture_float_linear_support = true;
 		//setup gl
 		#if js //load floating point extension
-			// gl.getExtension('OES_texture_float_linear'); (no need for this any more)
-			gl.getExtension('OES_texture_float');
+			 //(no need for this unless we use linearFactory - for performance and compatibility, it's best to avoid this extension if possible!)
+			if(gl.getExtension('OES_texture_float_linear') == null) texture_float_linear_support = false;
+			if(gl.getExtension('OES_texture_float') == null) null;
 		#end
 
 		//geometry
@@ -57,15 +59,18 @@ class GPUFluid{
 		renderQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, width, height, gl.TRIANGLE_STRIP);
 
 		//create texture
-		//seems to run slightly faster with rgba instead of rgb?
-		var linearFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.LINEAR);
+		//seems to run slightly faster with rgba instead of rgb in Chrome?
+		//var linearFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.LINEAR);
 		var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
 
 		velocityRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
 		pressureRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
 		divergenceRenderTarget = new RenderTarget(gl, nearestFactory, width, height);
 		dyeRenderTarget = new RenderTarget2Phase(gl, 
-			gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR),
+			gltoolbox.TextureTools.customTextureFactory(
+				gl.RGBA, gl.FLOAT, 
+				texture_float_linear_support ? gl.LINEAR : gl.NEAREST
+			),
 			width,
 			height
 		);
@@ -106,6 +111,9 @@ class GPUFluid{
 		updateDye(dt);
 		advect(dyeRenderTarget, dt);
 	}
+
+	public function simToClipSpaceX(simX:Float) return simX/(this.cellSize * this.aspectRatio);
+	public function simToClipSpaceY(simY:Float) return simY/(this.cellSize);
 
 	inline function advect(target:RenderTarget2Phase, dt:Float){
 		advectShader.dt.set(dt);
@@ -222,6 +230,10 @@ class PressureGradientSubstract extends FluidBase{}
 	varying vec2 p;
 
 	vec2 v = texture2D(velocity, texelCoord).xy;
+
+	void main(){
+		gl_FragColor = vec4(v, 0, 0);
+	}
 ')
 class ApplyForces extends FluidBase{}
 
@@ -234,5 +246,9 @@ class ApplyForces extends FluidBase{}
 	varying vec2 p;
 
 	vec4 color = texture2D(dye, texelCoord);
+
+	void main(){
+		gl_FragColor = color;
+	}
 ')
 class UpdateDye extends FluidBase{}
