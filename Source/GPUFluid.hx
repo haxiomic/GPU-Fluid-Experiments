@@ -48,7 +48,7 @@ class GPUFluid{
 
 		//setup gl
 		#if js //load floating point extension
-			gl.getExtension('OES_texture_float_linear');
+			// gl.getExtension('OES_texture_float_linear'); (no need for this any more)
 			gl.getExtension('OES_texture_float');
 		#end
 
@@ -64,7 +64,11 @@ class GPUFluid{
 		velocityRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
 		pressureRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
 		divergenceRenderTarget = new RenderTarget(gl, nearestFactory, width, height);
-		dyeRenderTarget = new RenderTarget2Phase(gl, linearFactory, width, height);
+		dyeRenderTarget = new RenderTarget2Phase(gl, 
+			gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.UNSIGNED_BYTE, gl.LINEAR),
+			width,
+			height
+		);
 
 		//create shaders
 		advectShader = new Advect();

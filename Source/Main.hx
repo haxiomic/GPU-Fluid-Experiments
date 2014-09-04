@@ -148,10 +148,10 @@ class Main extends Application {
 		particles.step(dt);
 
 		//render to offScreen
-		// gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
-		// gl.bindFramebuffer(gl.FRAMEBUFFER, offScreenTarget.frameBufferObject);
-		gl.viewport (0, 0, window.width, window.height);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+		gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, offScreenTarget.frameBufferObject);
+		// gl.viewport (0, 0, window.width, window.height);
+		// gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
 
 		gl.clearColor(0,0,0,1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
@@ -167,9 +167,9 @@ class Main extends Application {
 		gl.disable(gl.BLEND);
 
 		//render offScreen texture to screen
-		// gl.viewport (0, 0, window.width, window.height);
-		// gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
-		// renderTexture(offScreenTarget.texture);
+		gl.viewport (0, 0, window.width, window.height);
+		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+		renderTexture(offScreenTarget.texture);
 
 		updateLastMouse();
 	}
