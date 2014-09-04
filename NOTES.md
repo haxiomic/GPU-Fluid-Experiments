@@ -1,5 +1,7 @@
 TODO:
 	- fix memory leak issue in html -> does one exist?
+		!! Answer: when the particles pile up, fewer gpu cores are used to render, since particles require a texture lookup, the same core running many lookups becomes slow!
+
 		-> Only seems to occur with particles! Reset fixes the issue???
 		what on earth?
 		-> seems to get worse when particles are on top of one another ?
@@ -10,7 +12,6 @@ TODO:
 	- there's an issue with GPUParticles's aspect ratio
 	- gpu particles needs improving, initial conditions: ie, the positions should not be determined by position in memory
 	}
-
 	- fallback to power of two textures in fluid for speed / compatibility in gltoolbox
 
 - Reading rigid body force data back to CPU with gl.readpixels:

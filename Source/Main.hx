@@ -65,8 +65,8 @@ class Main extends Application {
 				");
 				var isSafari  = (~/Safari/i).match(browserString);
 				if(isSafari){
-					this.init = function(c:RenderContext){}		//nop out graphics calls
-					this.render = function(c:RenderContext){}
+					// this.init = function(c:RenderContext){}		//nop out graphics calls
+					// this.render = function(c:RenderContext){}
 					alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this only works in Chrome and Firefox :[");
 					return;
 				}
@@ -78,6 +78,9 @@ class Main extends Application {
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
+				gl.disable(gl.DEPTH_TEST);
+				gl.disable(gl.CULL_FACE);
+				gl.disable(gl.DITHER);
 
 				#if ios //grab default screenbuffer
 					screenBuffer = new GLFramebuffer(gl.version, gl.getParameter(gl.FRAMEBUFFER_BINDING));
@@ -143,8 +146,6 @@ class Main extends Application {
 
 		particles.flowVelocityField = fluid.velocityRenderTarget.readFromTexture;
 		particles.step(dt);
-
-		//clear screen
 
 		//render to offScreen
 		gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
@@ -254,12 +255,13 @@ class ScreenTexture extends ShaderBase {}
 @:vert('
 	void main(){
 		set();
+
 		//generate color
 		vec2 v = texture2D(particleData, particleUV).ba;
 		float lv = length(v);
 
 		vec3 cvec = vec3(sin(lv/3.0)*1.5-lv*lv*0.7, lv*lv*30.0, lv+lv*lv*10.0);
-		color = vec4(vec3(0.5, 0.3, 0.13)*0.1+cvec*1., 1.);
+		color = vec4(vec3(0.5, 0.3, 0.13)*0.1+cvec*1., 1.0);
 	}
 ')
 class ColorParticleMotion extends GPUParticles.RenderParticles{}
@@ -278,12 +280,19 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
 			vec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;
 
-			float l = distanceToSegment(mouse, lastMouse, p);
+			// float l = distanceToSegment(mouse, lastMouse, p);
+			//compute tapered distance to mouse line segment
+			float projection;
+			float l = distanceToSegment(mouse, lastMouse, p, projection);
+			float taperFactor = 1.0;//1 => 0 at lastMouse, 0 => no tapering
+			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
+
 			float R = 0.05;
 			float m = exp(-l/R);
 			m *= m;
  			
-			float x = clamp(length(mouseVelocity)*0.01, 0., 1.);
+ 			float s = length(mouseVelocity);
+			float x = clamp(sqrt(s)*0.05, 0., 1.);
 			color.r += m * (exp(-pow((x+0.15)*3., 2.))*.5 + pow((x-0.46)*1.85, 5.));
 			color.g += m * (x*x*x*x);
 			color.b += m * (x*x);
