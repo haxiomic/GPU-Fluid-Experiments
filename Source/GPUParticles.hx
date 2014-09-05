@@ -24,6 +24,8 @@ class GPUParticles{
 	public var flowEnabled(get, set):Bool;
 	public var flowVelocityField(get, set):GLTexture;
 
+	public var count(default, null):Int;
+
 	var textureQuad:GLBuffer;
 
 	public function new(gl:GLRenderContext, max:Int = 524288){
@@ -69,6 +71,8 @@ class GPUParticles{
 		this.flowScaleX = 1;
 		this.flowScaleY = 1;
 		this.flowEnabled = false;
+
+		count = particleData.width * particleData.height;
 
 		//write initial data
 		reset();

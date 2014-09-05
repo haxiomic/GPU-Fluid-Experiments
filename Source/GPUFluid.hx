@@ -68,7 +68,7 @@ class GPUFluid{
 		divergenceRenderTarget = new RenderTarget(gl, nearestFactory, width, height);
 		dyeRenderTarget = new RenderTarget2Phase(gl, 
 			gltoolbox.TextureTools.customTextureFactory(
-				gl.RGBA, gl.FLOAT, 
+				gl.RGB, gl.FLOAT, 
 				texture_float_linear_support ? gl.LINEAR : gl.NEAREST
 			),
 			width,

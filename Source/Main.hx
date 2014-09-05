@@ -107,12 +107,12 @@ class Main extends Application {
 				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
 				mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
 
-				var scaleFactor = 1/2;
+				var scaleFactor = 1/1;
 				var fluidIterations = 20;
 				var fluidScale = 32;
 
 				#if js
-					scaleFactor = 1/5;
+					scaleFactor = 1/4;
 					fluidIterations = 18;
 				#end
 				
@@ -120,7 +120,7 @@ class Main extends Application {
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
-				particles = new GPUParticles(gl, 262144);
+				particles = new GPUParticles(gl, 524288);
 				particles.flowScaleX = fluid.simToClipSpaceX(1);
 				particles.flowScaleY = fluid.simToClipSpaceY(1);
 				particles.dragCoefficient = 1;
@@ -162,8 +162,8 @@ class Main extends Application {
 		gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
 		gl.blendEquation(gl.FUNC_ADD);
 
-		if(renderFluidEnabled) renderTexture(fluid.dyeRenderTarget.readFromTexture);
 		if(renderParticlesEnabled) renderParticles();
+		if(renderFluidEnabled) renderTexture(fluid.dyeRenderTarget.readFromTexture);
 
 		gl.disable(gl.BLEND);
 
@@ -199,7 +199,7 @@ class Main extends Application {
 		// gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
 		// gl.blendEquation(gl.FUNC_ADD);
 
-		gl.drawArrays(gl.POINTS, 0, particles.particleData.width*particles.particleData.height);
+		gl.drawArrays(gl.POINTS, 0, particles.count);
 
 		// gl.disable(gl.BLEND);
 		renderParticlesShader.deactivate();
@@ -259,10 +259,14 @@ class ScreenTexture extends ShaderBase {}
 
 		//generate color
 		vec2 v = texture2D(particleData, particleUV).ba;
-		float lv = length(v);
 
-		vec3 cvec = vec3(sin(lv/3.0)*1.5-lv*lv*0.7, lv*lv*30.0, lv+lv*lv*10.0);
-		color = vec4(vec3(0.5, 0.3, 0.13)*0.1+cvec*1., 1.0);
+		float speed = length(v);
+		float x = clamp(speed * 4.0, 0., 1.);
+		color.rgb = (
+				mix(vec3(10.4, 10., 6.0) / 100.0, vec3(0.2, 47.8, 100) / 100.0, x)
+				+ (vec3(63.1, 92.5, 100) / 100.) * pow(x, 3.) * .1
+		);
+		color.a = pow(x, .4);
 	}
 ')
 class ColorParticleMotion extends GPUParticles.RenderParticles{}
@@ -275,8 +279,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 	uniform vec2 lastMouseClipSpace;
 
 	void main(){
-		//color.xyz *= 0.995;
-		color.xyz += (0.0 - color.xyz)*0.01;
+		color.xyz *= 0.995;
 		if(isMouseDown){			
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
@@ -286,18 +289,18 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 			//compute tapered distance to mouse line segment
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
-			float taperFactor = 1.0;//1 => 0 at lastMouse, 0 => no tapering
+			float taperFactor = 0.6;
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
-
-			float R = 0.05;
+			float R = 0.045;
 			float m = exp(-l/R);
-			m *= m;
+			m *= m ;
  			
- 			float s = length(mouseVelocity);
-			float x = clamp(sqrt(s)*0.05, 0., 1.);
-			color.r += m * (exp(-pow((x+0.15)*3., 2.))*.5 + pow((x-0.46)*1.85, 5.));
-			color.g += m * (x*x*x*x);
-			color.b += m * (x*x);
+ 			float speed = length(mouseVelocity);
+			float x = clamp(speed * 0.005, 0., 1.);
+			color.rgb += m * (
+				mix(vec3(2.4, 0, 5.9) / 200.0, vec3(0.2, 51.8, 100) / 100.0, x)
+				+ (vec3(5.9, 84.3, 100) / 100.) * pow(x, 15.)
+			);
 		}
 
 		gl_FragColor = color;
@@ -323,15 +326,16 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			//compute tapered distance to mouse line segment
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
-			float taperFactor = 0.5;//1 => 0 at lastMouse, 0 => no tapering
+			float taperFactor = 1.0;//1 => 0 at lastMouse, 0 => no tapering
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
 
-			float R = 0.015;
+			float R = 0.02;
 			float m = exp(-l/R); //drag coefficient
-			m *= projectedFraction * projectedFraction;
+			m *= m * projectedFraction * projectedFraction;
 
+			vec2 tv = mouseVelocity;
 			// float maxSpeed = 10.04 * dx / dt;
-			vec2 tv = mouseVelocity;//clamp(mouseVelocity, -maxSpeed, maxSpeed);
+			// tv = clamp(tv, -maxSpeed, maxSpeed); //impose max speed
 			v += (tv - v)*m;
 		}
 

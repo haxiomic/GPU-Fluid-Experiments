@@ -7,7 +7,7 @@ Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid 
 - Establish efficient pipeline for reading forces to CPU (via glReadPixels)
 
 ####Requires:
-- [lime-next](https://github.com/openfl/lime/tree/next) ♥
+- [lime](https://github.com/openfl/lime/) ♥
 - [gltoolbox](http://github.com/haxiomic/gltoolbox)
 - [my fork of shaderblox](http://github.com/haxiomic/shaderblox)
 - Haxe 3.1.3
