@@ -51,7 +51,7 @@ class Main extends Application {
 				
 		#if js
 		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
-		browserMonitor.sendReportAfterTime(1);
+		browserMonitor.sendReportAfterTime(8);
 		#end
 	}
 
