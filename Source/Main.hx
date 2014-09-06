@@ -29,6 +29,8 @@ class Main extends Application {
 	var mouseForceShader      : MouseForce;
 	//Window
 	var isMouseDown:Bool = false;
+	var mousePointKnown:Bool = false;
+	var lastMousePointKnown:Bool = false;
 	var mouse = new Vector2();
 	var mouseClipSpace = new Vector2();
 	var lastMouse = new Vector2();
@@ -128,8 +130,6 @@ class Main extends Application {
 				trace('RenderContext \'$context\' not supported');
 		}
 
-		updateLastMouse();
-
 		lastTime = haxe.Timer.stamp();
 	}
 
@@ -139,8 +139,10 @@ class Main extends Application {
 		lastTime = time;
 
 		//update mouse velocity
-		updateDyeShader.isMouseDown.set(isMouseDown);
-		mouseForceShader.isMouseDown.set(isMouseDown);
+		if(lastMousePointKnown){
+			updateDyeShader.isMouseDown.set(isMouseDown);
+			mouseForceShader.isMouseDown.set(isMouseDown);
+		}
 
 		//step physics
 		fluid.step(dt);
@@ -214,7 +216,7 @@ class Main extends Application {
 	inline function windowToClipSpaceY(y:Float)return ((window.height-y)/window.height)*2 - 1;
 
 	override function onMouseDown( x : Float , y : Float , button : Int ){
-		this.isMouseDown = true;
+		this.isMouseDown = true; 
 	}
 	override function onMouseUp( x : Float , y : Float , button : Int ){
 		this.isMouseDown = false;
@@ -226,14 +228,16 @@ class Main extends Application {
 			windowToClipSpaceX(x),
 			windowToClipSpaceY(y)
 		);
+		mousePointKnown = true;
 	}
 
 	inline function updateLastMouse(){
 		lastMouse.setTo(mouse.x, mouse.y);
 		lastMouseClipSpace.setTo(
-			windowToClipSpaceX(lastMouse.x),
-			windowToClipSpaceY(lastMouse.y)
+			windowToClipSpaceX(mouse.x),
+			windowToClipSpaceY(mouse.y)
 		);
+		lastMousePointKnown = true && mousePointKnown;
 	}
 
 	override function onKeyUp( keyCode : Int , modifier : Int ){
