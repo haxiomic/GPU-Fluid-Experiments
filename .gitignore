@@ -6,4 +6,9 @@
 ehthumbs.db
 Thumbs.db
 
-Export/
+
+#ignore everything in Export/ except for the html5 output
+Export/*
+!Export/html5
+Export/html5/*
+!Export/html5/bin
