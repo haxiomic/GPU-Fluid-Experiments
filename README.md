@@ -2,6 +2,8 @@
 ----
 Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid simulation in OpenGL ES
 
+[Demo](http://haxiomic.github.io/GPU-Fluid-Experiments/Export/html5/bin/)
+
 ####Todo
 - Switch to MAC (staggerd) grid
 - Establish efficient pipeline for reading forces to CPU (via glReadPixels)
