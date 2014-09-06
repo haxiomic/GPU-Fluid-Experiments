@@ -209,15 +209,15 @@ var GPUFluid = function(gl,width,height,cellSize,solverIterations) {
 	this.cellSize = cellSize;
 	this.solverIterations = solverIterations;
 	this.aspectRatio = this.width / this.height;
-	var texture_float_linear_support = true;
-	if(gl.getExtension("OES_texture_float_linear") == null) texture_float_linear_support = false;
+	var texture_float_linear_supported = true;
+	if(gl.getExtension("OES_texture_float_linear") == null) texture_float_linear_supported = false;
 	if(gl.getExtension("OES_texture_float") == null) null;
 	this.renderQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,width,height,gl.TRIANGLE_STRIP,null);
 	var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.FLOAT,gl.NEAREST,null);
 	this.velocityRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,nearestFactory,width,height);
 	this.pressureRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,nearestFactory,width,height);
 	this.divergenceRenderTarget = new gltoolbox.render.RenderTarget(gl,nearestFactory,width,height);
-	this.dyeRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGB,gl.FLOAT,texture_float_linear_support?gl.LINEAR:gl.NEAREST,null),width,height);
+	this.dyeRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGB,gl.FLOAT,texture_float_linear_supported?gl.LINEAR:gl.NEAREST,null),width,height);
 	this.advectShader = new Advect();
 	this.divergenceShader = new Divergence();
 	this.pressureSolveShader = new PressureSolve();
@@ -1195,6 +1195,8 @@ var Main = function() {
 	this.lastMouse = new lime.math.Vector2();
 	this.mouseClipSpace = new lime.math.Vector2();
 	this.mouse = new lime.math.Vector2();
+	this.lastMousePointKnown = false;
+	this.mousePointKnown = false;
 	this.isMouseDown = false;
 	this.screenBuffer = null;
 	this.textureQuad = null;
@@ -1242,21 +1244,21 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.particles.stepParticlesShader.dragCoefficient.set_data(1);
 			break;
 		default:
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 128, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 130, className : "Main", methodName : "init"});
 		}
-		this.lastMouse.setTo(this.mouse.x,this.mouse.y);
-		this.lastMouseClipSpace.setTo(this.lastMouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.lastMouse.y) / this.windows[0].height * 2 - 1);
 		this.lastTime = haxe.Timer.stamp();
 	}
 	,render: function(context) {
 		this.time = haxe.Timer.stamp();
 		var dt = this.time - this.lastTime;
 		this.lastTime = this.time;
-		this.updateDyeShader.isMouseDown.set(this.isMouseDown);
-		this.mouseForceShader.isMouseDown.set(this.isMouseDown);
+		if(this.lastMousePointKnown) {
+			this.updateDyeShader.isMouseDown.set(this.isMouseDown);
+			this.mouseForceShader.isMouseDown.set(this.isMouseDown);
+		}
 		this.fluid.step(dt);
 		this.particles.set_flowVelocityField(this.fluid.velocityRenderTarget.readFromTexture);
-		this.particles.step(dt);
+		if(this.renderParticlesEnabled) this.particles.step(dt);
 		this.gl.viewport(0,0,this.offScreenTarget.width,this.offScreenTarget.height);
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.offScreenTarget.frameBufferObject);
 		this.gl.clearColor(0,0,0,1);
@@ -1287,7 +1289,8 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
 		this.screenTextureShader.deactivate();
 		this.lastMouse.setTo(this.mouse.x,this.mouse.y);
-		this.lastMouseClipSpace.setTo(this.lastMouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.lastMouse.y) / this.windows[0].height * 2 - 1);
+		this.lastMouseClipSpace.setTo(this.mouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.mouse.y) / this.windows[0].height * 2 - 1);
+		this.lastMousePointKnown = this.mousePointKnown;
 	}
 	,renderTexture: function(texture) {
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.textureQuad);
@@ -1321,10 +1324,12 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 	,onMouseMove: function(x,y,button) {
 		this.mouse.setTo(x,y);
 		this.mouseClipSpace.setTo(x / this.windows[0].width * 2 - 1,(this.windows[0].height - y) / this.windows[0].height * 2 - 1);
+		this.mousePointKnown = true;
 	}
 	,updateLastMouse: function() {
 		this.lastMouse.setTo(this.mouse.x,this.mouse.y);
-		this.lastMouseClipSpace.setTo(this.lastMouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.lastMouse.y) / this.windows[0].height * 2 - 1);
+		this.lastMouseClipSpace.setTo(this.mouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.mouse.y) / this.windows[0].height * 2 - 1);
+		this.lastMousePointKnown = this.mousePointKnown;
 	}
 	,onKeyUp: function(keyCode,modifier) {
 		switch(keyCode) {
@@ -2366,6 +2371,22 @@ js.Boot.__instanceof = function(o,cl) {
 };
 js.Boot.__cast = function(o,t) {
 	if(js.Boot.__instanceof(o,t)) return o; else throw "Cannot cast " + Std.string(o) + " to " + Std.string(t);
+};
+js.html = {};
+js.html._CanvasElement = {};
+js.html._CanvasElement.CanvasUtil = function() { };
+$hxClasses["js.html._CanvasElement.CanvasUtil"] = js.html._CanvasElement.CanvasUtil;
+js.html._CanvasElement.CanvasUtil.__name__ = true;
+js.html._CanvasElement.CanvasUtil.getContextWebGL = function(canvas,attribs) {
+	var _g = 0;
+	var _g1 = ["webgl","experimental-webgl"];
+	while(_g < _g1.length) {
+		var name = _g1[_g];
+		++_g;
+		var ctx = canvas.getContext(name,attribs);
+		if(ctx != null) return ctx;
+	}
+	return null;
 };
 lime.AssetCache = function() {
 	this.enabled = true;
@@ -4549,8 +4570,8 @@ lime.graphics.Renderer.dispatch = function() {
 lime.graphics.Renderer.prototype = {
 	create: function() {
 		if(this.window.div != null) this.context = lime.graphics.RenderContext.DOM(this.window.div); else if(this.window.canvas != null) {
-			var webgl = this.window.canvas.getContext("webgl");
-			if(webgl == null) webgl = this.window.canvas.getContext("experimental-webgl");
+			var options = { alpha : true, antialias : this.window.config.antialiasing > 0, depth : this.window.config.depthBuffer, premultipliedAlpha : true, stencil : this.window.config.stencilBuffer, preserveDrawingBuffer : false};
+			var webgl = js.html._CanvasElement.CanvasUtil.getContextWebGL(this.window.canvas,options);
 			if(webgl == null) this.context = lime.graphics.RenderContext.CANVAS(this.window.canvas.getContext("2d")); else {
 				lime.graphics.opengl.GL.context = webgl;
 				this.context = lime.graphics.RenderContext.OPENGL(lime.graphics.opengl.GL.context);
