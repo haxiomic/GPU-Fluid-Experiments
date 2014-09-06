@@ -26,6 +26,58 @@ ApplicationMain.start = function() {
 	ApplicationMain.app.create(ApplicationMain.config);
 	var result = ApplicationMain.app.exec();
 };
+var BrowserMonitor = function(app,serverURL) {
+	this.timeSamples = 0;
+	this.userData = { };
+	this.mouseClicks = 0;
+	this.averageFrameTime = 0;
+	this.averageFPS = 0;
+	var _g = this;
+	this.serverURL = serverURL;
+	this.userAgent = window.navigator.userAgent;
+	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
+	this.windowWidth = window.innerWidth;
+	this.windowHeight = window.innerHeight;
+	lime.ui.MouseEventManager.onMouseUp.add(function(x,y,button) {
+		_g.mouseClicks++;
+	});
+};
+$hxClasses["BrowserMonitor"] = BrowserMonitor;
+BrowserMonitor.__name__ = true;
+BrowserMonitor.prototype = {
+	sendReportAfterTime: function(seconds) {
+		haxe.Timer.delay($bind(this,this.sendReport),seconds * 1000);
+	}
+	,sendReport: function() {
+		if(this.serverURL == null) return;
+		var data = JSON.stringify({ browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData});
+		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 62, className : "BrowserMonitor", methodName : "sendReport"});
+		var request = new XMLHttpRequest();
+		request.open("POST",this.serverURL,true);
+		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
+		request.send(data);
+	}
+	,isSafari: function() {
+		return new EReg("Safari","i").match(this.browserName);
+	}
+	,isChrome: function() {
+		return new EReg("Chrome","i").match(this.browserName);
+	}
+	,isFirefox: function() {
+		return new EReg("Firefox","i").match(this.browserName);
+	}
+	,addDt: function(dt_ms) {
+		if(dt_ms > 8.3 && dt_ms < 200.) {
+			this.averageFrameTime = this.averageFrameTime / (1 + 1 / this.timeSamples) + dt_ms / (this.timeSamples + 1);
+			this.averageFPS = 1000 / this.averageFrameTime;
+			this.timeSamples++;
+		}
+	}
+	,createReportJSON: function() {
+		return JSON.stringify({ browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData});
+	}
+	,__class__: BrowserMonitor
+};
 var lime = {};
 lime.AssetLibrary = function() {
 };
@@ -1201,12 +1253,8 @@ var Main = function() {
 	this.screenBuffer = null;
 	this.textureQuad = null;
 	lime.app.Application.call(this);
-	var browserString = eval("\n\t\t\t\t\t(function(){\n\t\t\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t\t\t    }\n\t\t\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t\t\t    }\n\t\t\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t\t\t    return M.join(' ');\n\t\t\t\t\t})();\n\t\t\t\t");
-	var isSafari = new EReg("Safari","i").match(browserString);
-	if(isSafari) {
-		alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this only works in Chrome and Firefox :[");
-		return;
-	}
+	this.browserMonitor = new BrowserMonitor(this,"http://awestronomer.com/services/browser-monitor/");
+	this.browserMonitor.sendReportAfterTime(7);
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
@@ -1230,20 +1278,32 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.updateDyeShader.lastMouseClipSpace.set_data(this.lastMouseClipSpace);
 			this.mouseForceShader.mouseClipSpace.set_data(this.mouseClipSpace);
 			this.mouseForceShader.lastMouseClipSpace.set_data(this.lastMouseClipSpace);
-			var scaleFactor = 1.;
+			var scaleFactor = 0.25;
 			var fluidIterations = 20;
 			var fluidScale = 32;
+			var particleCount = 524288;
 			scaleFactor = 0.25;
 			fluidIterations = 18;
 			this.fluid = new GPUFluid(gl,Math.round(this.windows[0].width * scaleFactor),Math.round(this.windows[0].height * scaleFactor),fluidScale,fluidIterations);
 			this.fluid.set_updateDyeShader(this.updateDyeShader);
 			this.fluid.set_applyForcesShader(this.mouseForceShader);
-			this.particles = new GPUParticles(gl,524288);
+			this.particles = new GPUParticles(gl,particleCount);
 			this.particles.set_flowScaleX(this.fluid.simToClipSpaceX(1));
 			this.particles.set_flowScaleY(this.fluid.simToClipSpaceY(1));
 			this.particles.stepParticlesShader.dragCoefficient.set_data(1);
+			this.browserMonitor.userData.texture_float_linear = gl.getExtension("OES_texture_float_linear") != null;
+			this.browserMonitor.userData.texture_float = gl.getExtension("OES_texture_float") != null;
+			this.browserMonitor.userData.scaleFactor = scaleFactor;
+			this.browserMonitor.userData.fluidIterations = fluidIterations;
+			this.browserMonitor.userData.fluidScale = fluidScale;
+			this.browserMonitor.userData.particleCount = particleCount;
+			if(new EReg("Safari","i").match(this.browserMonitor.browserName)) {
+				js.Lib.alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this demo only works in Chrome and Firefox");
+				return;
+			}
 			break;
 		default:
+			js.Lib.alert("WebGL is not supported");
 			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 130, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
@@ -1252,6 +1312,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.time = haxe.Timer.stamp();
 		var dt = this.time - this.lastTime;
 		this.lastTime = this.time;
+		this.browserMonitor.addDt(dt * 1000);
 		if(this.lastMousePointKnown) {
 			this.updateDyeShader.isMouseDown.set(this.isMouseDown);
 			this.mouseForceShader.isMouseDown.set(this.isMouseDown);
@@ -2371,6 +2432,12 @@ js.Boot.__instanceof = function(o,cl) {
 };
 js.Boot.__cast = function(o,t) {
 	if(js.Boot.__instanceof(o,t)) return o; else throw "Cannot cast " + Std.string(o) + " to " + Std.string(t);
+};
+js.Lib = function() { };
+$hxClasses["js.Lib"] = js.Lib;
+js.Lib.__name__ = true;
+js.Lib.alert = function(v) {
+	alert(js.Boot.__string_rec(v,""));
 };
 js.html = {};
 js.html._CanvasElement = {};
