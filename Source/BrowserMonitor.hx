@@ -14,17 +14,25 @@ class BrowserMonitor{
 
 	public var mouseClicks(default, null):Int = 0;
 
+	public var consoleLog:Array<String>;
+	public var consoleError:Array<String>;
+	public var consoleWarn:Array<String>;
+
 	public var userData:Dynamic = {};
 
+	var app:Application;
+	var storeConsoleOutput:Bool = false;
 	var beginTime:Float;
 	var timeSamples:Int = 0;
 	var serverURL:String;
 
-	public function new(?app:Application, ?serverURL:String = null){
+	public function new(?serverURL:String = null, ?app:Application, storeConsoleOutput:Bool = false){
 		#if !js
 		return;
 		#end
 		this.serverURL = serverURL;
+		this.app = app;
+		this.storeConsoleOutput = storeConsoleOutput;
 		this.userAgent = js.Browser.navigator.userAgent; 
 		this.browserName = js.Lib.eval("
 			(function(){
@@ -50,6 +58,31 @@ class BrowserMonitor{
 		lime.ui.MouseEventManager.onMouseUp.add(function(x:Float, y:Float, button:Int){
 			mouseClicks++;
 		});
+
+		if(storeConsoleOutput){
+			consoleLog = new Array<String>();
+			consoleError = new Array<String>();
+			consoleWarn = new Array<String>();
+			untyped{
+				(function(){
+				    var oldLog = console.log;
+				    var oldError = console.error;
+				    var oldWarn = console.warn;
+				    console.log = function (message) {
+				    	consoleLog.push(message);
+				        oldLog.apply(console, js.Lib.eval("arguments"));
+				    };
+				    console.error = function (message) {
+				    	oldError.push(message);
+				        oldError.apply(console, js.Lib.eval("arguments"));
+				    };
+				    console.warn = function (message) {
+				    	oldWarn.push(message);
+				        oldWarn.apply(console, js.Lib.eval("arguments"));
+				    };
+				})();
+			}
+		}
 	}
 
 	public function sendReportAfterTime(seconds:Int){
@@ -59,7 +92,7 @@ class BrowserMonitor{
 	public function sendReport(){
 		if(serverURL == null)return;
 		var data = createReportJSON();
-		trace('Sending performance data');
+		trace('Sending performance data', data);
 		var request = new js.html.XMLHttpRequest();
 		request.open('POST', serverURL, true);
 		request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
@@ -79,16 +112,23 @@ class BrowserMonitor{
 	}
 
 	inline function createReportJSON(){
-		return haxe.Json.stringify({
-			browserName      : browserName,
-			userAgent        : userAgent,
-			windowWidth      : windowWidth,
-			windowHeight     : windowHeight,
-			averageFPS       : Math.round(averageFPS * 100)/100,
+		var json = {
+			browserName         : browserName,
+			userAgent           : userAgent,
+			windowWidth         : windowWidth,
+			windowHeight        : windowHeight,
+			averageFPS          : Math.round(averageFPS * 100)/100,
 			// averageFrameTime : averageFrameTime + ' ms',
-			timeSamples      : timeSamples,
-			mouseClicks      : mouseClicks,
-			userData         : userData
-		});
+			timeSamples         : timeSamples,
+			mouseClicks         : mouseClicks,
+			userData            : userData,
+		};
+		if(storeConsoleOutput) 
+			Reflect.setField(json, 'console',{
+				log   : consoleLog,
+				error : consoleError,
+				warn  : consoleWarn
+			});
+		return haxe.Json.stringify(json);
 	}
 }

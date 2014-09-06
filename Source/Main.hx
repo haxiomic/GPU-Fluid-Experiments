@@ -50,8 +50,8 @@ class Main extends Application {
 		super();
 				
 		#if js
-		browserMonitor = new BrowserMonitor(this, 'http://awestronomer.com/services/browser-monitor/');
-		browserMonitor.sendReportAfterTime(7);
+		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
+		browserMonitor.sendReportAfterTime(1);
 		#end
 	}
 
