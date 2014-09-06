@@ -146,7 +146,7 @@ class Main extends Application {
 		fluid.step(dt);
 
 		particles.flowVelocityField = fluid.velocityRenderTarget.readFromTexture;
-		particles.step(dt);
+		if(renderParticlesEnabled) particles.step(dt);
 
 		//render to offScreen
 		gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);

@@ -2,7 +2,8 @@ TODO:
 	- fix memory leak issue in html -> does one exist?
 		!! Theory: when the particles pile up, fewer gpu cores are used to render, since particles require a texture lookup, the same core running many lookups becomes slow!
 			-> Firefox handles this much better than chrome?
-			-> Blending factors into it
+			-> Blending factors into it a little
+			-> Improved a lot by using NEAREST velocity texture
 
 		-> Only seems to occur with particles! Reset fixes the issue???
 		what on earth?

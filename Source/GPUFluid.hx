@@ -25,7 +25,7 @@ class GPUFluid{
 	public var divergenceRenderTarget (default, null) : RenderTarget;
 	public var dyeRenderTarget        (default, null) : RenderTarget2Phase;
 
-	//Public Shaders
+	//User Shaders
 	public var applyForcesShader (default, set) : ApplyForces;
 	public var updateDyeShader   (default, set) : UpdateDye;
 
@@ -46,11 +46,11 @@ class GPUFluid{
 		this.solverIterations = solverIterations;
 		this.aspectRatio = this.width/this.height;
 
-		var texture_float_linear_support = true;
+		var texture_float_linear_supported = true;
 		//setup gl
 		#if js //load floating point extension
 			 //(no need for this unless we use linearFactory - for performance and compatibility, it's best to avoid this extension if possible!)
-			if(gl.getExtension('OES_texture_float_linear') == null) texture_float_linear_support = false;
+			if(gl.getExtension('OES_texture_float_linear') == null) texture_float_linear_supported = false;
 			if(gl.getExtension('OES_texture_float') == null) null;
 		#end
 
@@ -59,8 +59,7 @@ class GPUFluid{
 		renderQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, width, height, gl.TRIANGLE_STRIP);
 
 		//create texture
-		//seems to run slightly faster with rgba instead of rgb in Chrome?
-		//var linearFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.LINEAR);
+		//	seems to run slightly faster with rgba instead of rgb in Chrome?
 		var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
 
 		velocityRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
@@ -69,7 +68,7 @@ class GPUFluid{
 		dyeRenderTarget = new RenderTarget2Phase(gl, 
 			gltoolbox.TextureTools.customTextureFactory(
 				gl.RGB, gl.FLOAT, 
-				texture_float_linear_support ? gl.LINEAR : gl.NEAREST
+				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
 			),
 			width,
 			height
