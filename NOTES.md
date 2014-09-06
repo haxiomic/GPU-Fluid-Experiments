@@ -20,4 +20,3 @@ TODO:
 BUGS in Other Things:
 	- Chrome, if missing OES_texture_float_linear, chrome errors incorrectly missing OES_float_linear
 	- Haxe bool != operator does not invert
-	- Lime, onmousemove should fire after init (if mouse doesn't move, it's set to 0,0 i think - needs testing)

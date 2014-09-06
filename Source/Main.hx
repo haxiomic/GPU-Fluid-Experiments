@@ -41,38 +41,17 @@ class Main extends Application {
 
 	var renderParticlesEnabled:Bool = true;
 	var renderFluidEnabled:Bool = true;
+
+	#if js
+	var browserMonitor:BrowserMonitor;
+	#end
 	
 	public function new () {
 		super();
-
-		//check and halt Safari browser
+				
 		#if js
-			untyped{
-				var browserString = js.Lib.eval("
-					(function(){
-					    var ua= navigator.userAgent, tem, 
-					    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];
-					    if(/trident/i.test(M[1])){
-					        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];
-					        return 'IE '+(tem[1] || '');
-					    }
-					    if(M[1]=== 'Chrome'){
-					        tem= ua.match(/\\bOPR\\/(\\d+)/)
-					        if(tem!= null) return 'Opera '+tem[1];
-					    }
-					    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];
-					    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);
-					    return M.join(' ');
-					})();
-				");
-				var isSafari  = (~/Safari/i).match(browserString);
-				if(isSafari){
-					// this.init = function(c:RenderContext){}		//nop out graphics calls
-					// this.render = function(c:RenderContext){}
-					alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this only works in Chrome and Firefox :[");
-					return;
-				}
-			}
+		browserMonitor = new BrowserMonitor(this, 'http://awestronomer.com/services/browser-monitor/');
+		browserMonitor.sendReportAfterTime(7);
 		#end
 	}
 
@@ -80,12 +59,13 @@ class Main extends Application {
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
+
 				gl.disable(gl.DEPTH_TEST);
 				gl.disable(gl.CULL_FACE);
 				gl.disable(gl.DITHER);
 
 				#if ios //grab default screenbuffer
-					screenBuffer = new GLFramebuffer(gl.version, gl.getParameter(gl.FRAMEBUFFER_BINDING));
+				screenBuffer = new GLFramebuffer(gl.version, gl.getParameter(gl.FRAMEBUFFER_BINDING));
 				#end
 				textureQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, 1, 1);
 
@@ -109,9 +89,10 @@ class Main extends Application {
 				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
 				mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
 
-				var scaleFactor = 1/1;
+				var scaleFactor = 1/4;
 				var fluidIterations = 20;
 				var fluidScale = 32;
+				var particleCount = 524288;
 
 				#if js
 					scaleFactor = 1/4;
@@ -122,11 +103,30 @@ class Main extends Application {
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
-				particles = new GPUParticles(gl, 524288);
+				particles = new GPUParticles(gl, particleCount);
 				particles.flowScaleX = fluid.simToClipSpaceX(1);
 				particles.flowScaleY = fluid.simToClipSpaceY(1);
 				particles.dragCoefficient = 1;
+
+				#if js
+				//record supported extensions
+				browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
+				browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
+				//record settings
+				browserMonitor.userData.scaleFactor = scaleFactor;
+				browserMonitor.userData.fluidIterations = fluidIterations;
+				browserMonitor.userData.fluidScale = fluidScale;
+				browserMonitor.userData.particleCount = particleCount;
+				//check and halt Safari browser
+				if(browserMonitor.isSafari()){
+					js.Lib.alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this demo only works in Chrome and Firefox");
+					return;
+				}
+				#end
 			default:
+				#if js
+					js.Lib.alert('WebGL is not supported');
+				#end
 				trace('RenderContext \'$context\' not supported');
 		}
 
@@ -137,6 +137,10 @@ class Main extends Application {
 		time = haxe.Timer.stamp();
 		var dt = time - lastTime; //60fps ~ 0.016
 		lastTime = time;
+
+		#if js
+		browserMonitor.addDt(dt*1000);
+		#end
 
 		//update mouse velocity
 		if(lastMousePointKnown){
