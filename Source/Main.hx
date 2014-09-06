@@ -279,27 +279,28 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 	uniform vec2 lastMouseClipSpace;
 
 	void main(){
-		color.xyz *= 0.995;
+		color.r *= (0.9797);
+		color.g *= (0.9494);
+		color.b *= (0.9696);
 		if(isMouseDown){			
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
 			vec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;
-
-			// float l = distanceToSegment(mouse, lastMouse, p);
-			//compute tapered distance to mouse line segment
+			
+			
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
 			float taperFactor = 0.6;
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
-			float R = 0.045;
+			float R = 0.025;
 			float m = exp(-l/R);
-			m *= m ;
+			
  			
  			float speed = length(mouseVelocity);
-			float x = clamp(speed * 0.005, 0., 1.);
+			float x = clamp((speed * speed * 0.00002 - l * 5.0) * projectedFraction, 0., 1.);
 			color.rgb += m * (
-				mix(vec3(2.4, 0, 5.9) / 200.0, vec3(0.2, 51.8, 100) / 100.0, x)
-				+ (vec3(5.9, 84.3, 100) / 100.) * pow(x, 15.)
+				mix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)
+ 				+ (vec3(100) / 100.) * pow(x, 9.)
 			);
 		}
 
@@ -326,7 +327,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			//compute tapered distance to mouse line segment
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
-			float taperFactor = 1.0;//1 => 0 at lastMouse, 0 => no tapering
+			float taperFactor = 0.6;//1 => 0 at lastMouse, 0 => no tapering
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
 
 			float R = 0.02;
