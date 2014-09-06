@@ -59,6 +59,7 @@ class BrowserMonitor{
 	public function sendReport(){
 		if(serverURL == null)return;
 		var data = createReportJSON();
+		trace('Sending performance data');
 		var request = new js.html.XMLHttpRequest();
 		request.open('POST', serverURL, true);
 		request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
