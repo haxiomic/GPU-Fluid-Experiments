@@ -26,14 +26,18 @@ ApplicationMain.start = function() {
 	ApplicationMain.app.create(ApplicationMain.config);
 	var result = ApplicationMain.app.exec();
 };
-var BrowserMonitor = function(app,serverURL) {
+var BrowserMonitor = function(serverURL,app,storeConsoleOutput) {
+	if(storeConsoleOutput == null) storeConsoleOutput = false;
 	this.timeSamples = 0;
+	this.storeConsoleOutput = false;
 	this.userData = { };
 	this.mouseClicks = 0;
 	this.averageFrameTime = 0;
 	this.averageFPS = 0;
 	var _g = this;
 	this.serverURL = serverURL;
+	this.app = app;
+	this.storeConsoleOutput = storeConsoleOutput;
 	this.userAgent = window.navigator.userAgent;
 	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
 	this.windowWidth = window.innerWidth;
@@ -41,6 +45,28 @@ var BrowserMonitor = function(app,serverURL) {
 	lime.ui.MouseEventManager.onMouseUp.add(function(x,y,button) {
 		_g.mouseClicks++;
 	});
+	if(storeConsoleOutput) {
+		this.consoleLog = new Array();
+		this.consoleError = new Array();
+		this.consoleWarn = new Array();
+		(function() {
+			var oldLog = console.log;
+			var oldError = console.error;
+			var oldWarn = console.warn;
+			console.log = function(message) {
+				_g.consoleLog.push(message);
+				oldLog.apply(console,eval("arguments"));
+			};
+			console.error = function(message1) {
+				oldError.push(message1);
+				oldError.apply(console,eval("arguments"));
+			};
+			console.warn = function(message2) {
+				oldWarn.push(message2);
+				oldWarn.apply(console,eval("arguments"));
+			};
+		})();
+	}
 };
 $hxClasses["BrowserMonitor"] = BrowserMonitor;
 BrowserMonitor.__name__ = true;
@@ -50,8 +76,8 @@ BrowserMonitor.prototype = {
 	}
 	,sendReport: function() {
 		if(this.serverURL == null) return;
-		var data = JSON.stringify({ browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData});
-		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 62, className : "BrowserMonitor", methodName : "sendReport"});
+		var data = this.createReportJSON();
+		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 95, className : "BrowserMonitor", methodName : "sendReport", customParams : [data]});
 		var request = new XMLHttpRequest();
 		request.open("POST",this.serverURL,true);
 		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
@@ -74,7 +100,9 @@ BrowserMonitor.prototype = {
 		}
 	}
 	,createReportJSON: function() {
-		return JSON.stringify({ browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData});
+		var json = { browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData};
+		if(this.storeConsoleOutput) json.console = { log : this.consoleLog, error : this.consoleError, warn : this.consoleWarn};
+		return JSON.stringify(json);
 	}
 	,__class__: BrowserMonitor
 };
@@ -1253,8 +1281,8 @@ var Main = function() {
 	this.screenBuffer = null;
 	this.textureQuad = null;
 	lime.app.Application.call(this);
-	this.browserMonitor = new BrowserMonitor(this,"http://awestronomer.com/services/browser-monitor/");
-	this.browserMonitor.sendReportAfterTime(7);
+	this.browserMonitor = new BrowserMonitor("http://awestronomer.com/services/browser-monitor/",this,false);
+	this.browserMonitor.sendReportAfterTime(8);
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
