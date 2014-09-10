@@ -14,7 +14,7 @@ class GPUFluid{
 	public var width  (default, null) : Int;
 	public var height (default, null) : Int;
 
-	public var cellSize (default, null) : Float;
+	public var cellSize (default, set) : Float;
 	public var solverIterations         : Int;
 
 	public var aspectRatio (default, null) : Float;
@@ -30,21 +30,21 @@ class GPUFluid{
 	public var updateDyeShader   (default, set) : UpdateDye;
 
 	//Internal Shaders
-	var advectShader                    : Advect;
-	var divergenceShader                : Divergence;
-	var pressureSolveShader             : PressureSolve;
-	var pressureGradientSubstractShader : PressureGradientSubstract;
+	var advectShader                    : Advect = new Advect();
+	var divergenceShader                : Divergence = new Divergence();
+	var pressureSolveShader             : PressureSolve = new PressureSolve();
+	var pressureGradientSubstractShader : PressureGradientSubstract = new PressureGradientSubstract();
 
 	//Geometry
-	var renderQuad : GLBuffer;
+	var textureQuad : GLBuffer;
 
 	public function new(gl:GLRenderContext, width:Int, height:Int, cellSize:Float = 8, solverIterations:Int = 18){
 		this.gl = gl;
 		this.width = width;
 		this.height = height;
-		this.cellSize = cellSize;
 		this.solverIterations = solverIterations;
 		this.aspectRatio = this.width/this.height;
+		this.cellSize = cellSize;
 
 		var texture_float_linear_supported = true;
 		//setup gl
@@ -56,7 +56,7 @@ class GPUFluid{
 
 		//geometry
 		//	inner quad, for main fluid shaders
-		renderQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, width, height, gl.TRIANGLE_STRIP);
+		textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
 
 		//create texture
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
@@ -74,30 +74,27 @@ class GPUFluid{
 			height
 		);
 
-		//create shaders
-		advectShader = new Advect();
-		divergenceShader = new Divergence();
-		pressureSolveShader = new PressureSolve();
-		pressureGradientSubstractShader = new PressureGradientSubstract();
-
 		//texel-space parameters
-		passBaseUniforms(advectShader);
-		passBaseUniforms(divergenceShader);
-		passBaseUniforms(pressureSolveShader);
-		passBaseUniforms(pressureGradientSubstractShader);
+		updateCoreShaderUniforms(advectShader);
+		updateCoreShaderUniforms(divergenceShader);
+		updateCoreShaderUniforms(pressureSolveShader);
+		updateCoreShaderUniforms(pressureGradientSubstractShader);
+	}
 
-		//shader specific
-		advectShader.rdx.set(1/cellSize);
-		divergenceShader.halfrdx.set(0.5*(1/cellSize));
-		pressureGradientSubstractShader.halfrdx.set(0.5*(1/cellSize));
-		pressureSolveShader.alpha.set(-cellSize*cellSize);
+	public inline function resize(width:Int, height:Int){
+		velocityRenderTarget.resize(width, height);
+		pressureRenderTarget.resize(width, height);
+		divergenceRenderTarget.resize(width, height);
+		dyeRenderTarget.resize(width, height);
+		this.width = width;
+		this.height = height;
 	}
 
 	public function step(dt:Float){
-		gl.viewport(0,0,width,height);
+		gl.viewport(0, 0, this.width, this.height);
 
 		//inner quad
-		gl.bindBuffer(gl.ARRAY_BUFFER, renderQuad);
+		gl.bindBuffer(gl.ARRAY_BUFFER, textureQuad);
 
 		advect(velocityRenderTarget, dt);
 
@@ -114,7 +111,7 @@ class GPUFluid{
 	public function simToClipSpaceX(simX:Float) return simX/(this.cellSize * this.aspectRatio);
 	public function simToClipSpaceY(simY:Float) return simY/(this.cellSize);
 
-	inline function advect(target:RenderTarget2Phase, dt:Float){
+	public inline function advect(target:RenderTarget2Phase, dt:Float){
 		advectShader.dt.set(dt);
 		//set velocity and texture to be advected
 		advectShader.target.set(target.readFromTexture);
@@ -181,26 +178,36 @@ class GPUFluid{
 		shader.deactivate();
 	}
 
-	inline function passBaseUniforms(shader:FluidBase){
+	inline function updateCoreShaderUniforms(shader:FluidBase){
 		if(shader==null)return;
 		//set uniforms
-		shader.aspectRatio.set(aspectRatio);
-		shader.invresolution.data.x = 1/width;
-		shader.invresolution.data.y = 1/height;
+		shader.aspectRatio.set(this.aspectRatio);
+		shader.invresolution.data.x = 1/this.width;
+		shader.invresolution.data.y = 1/this.height;
 	}
 
 	inline function set_applyForcesShader(v:ApplyForces):ApplyForces{
 		this.applyForcesShader = v;
 		this.applyForcesShader.dx.data = this.cellSize;
-		passBaseUniforms(this.applyForcesShader);
+		updateCoreShaderUniforms(this.applyForcesShader);
 		return this.applyForcesShader;
 	}
 
 	inline function set_updateDyeShader(v:UpdateDye):UpdateDye{
 		this.updateDyeShader = v;
 		this.updateDyeShader.dx.data = this.cellSize;
-		passBaseUniforms(this.updateDyeShader);
+		updateCoreShaderUniforms(this.updateDyeShader);
 		return this.updateDyeShader;
+	}
+
+	inline function set_cellSize(v:Float):Float{
+		//shader specific
+		cellSize = v;
+		advectShader.rdx.set(1/cellSize);
+		divergenceShader.halfrdx.set(0.5*(1/cellSize));
+		pressureGradientSubstractShader.halfrdx.set(0.5*(1/cellSize));
+		pressureSolveShader.alpha.set(-cellSize*cellSize);
+		return cellSize; 
 	}
 }
 
