@@ -28,7 +28,7 @@ class GPUParticles{
 
 	var textureQuad:GLBuffer;
 
-	public function new(gl:GLRenderContext, max:Int = 524288){
+	public function new(gl:GLRenderContext, count:Int = 524288){
 		this.gl = gl;
 
 		#if js //load floating point texture extension
@@ -39,28 +39,7 @@ class GPUParticles{
 		#end
 
 		//quad for writing to textures
-		textureQuad = GeometryTools.createQuad(gl, 0, 0, 1, 1);
-
-		//setup particle data
-		var dataWidth:Int = Math.ceil( Math.sqrt(max) );
-		var dataHeight:Int = dataWidth;
-
-		//create particle data texture
-		particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.floatTextureFactoryRGBA, dataWidth, dataHeight);
-
-		//create particle vertex buffers
-		var arrayUVs = new Array<Float>();
-		for(i in 0...dataWidth){
-			for(j in 0...dataHeight){
-				arrayUVs.push(i/dataWidth);
-				arrayUVs.push(j/dataHeight);
-			}
-		}
-
-		particleUVs = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, particleUVs);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arrayUVs), gl.STATIC_DRAW);
-		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+		textureQuad = GeometryTools.getCachedTextureQuad(gl);
 
 		//create shaders
 		inititalConditionsShader = new InitialConditions();
@@ -72,7 +51,8 @@ class GPUParticles{
 		this.flowScaleY = 1;
 		this.flowEnabled = false;
 
-		count = particleData.width * particleData.height;
+		//trigger creation of particle textures
+		setCount(count);
 
 		//write initial data
 		reset();
@@ -90,12 +70,40 @@ class GPUParticles{
 		renderShaderTo(inititalConditionsShader, particleData);
 	}
 
+	public function setCount(newCount:Int):Int{
+		//setup particle data
+		var dataWidth:Int = Math.ceil( Math.sqrt(newCount) );
+		var dataHeight:Int = dataWidth;
+
+		//create particle data texture
+		if(this.particleData != null)
+			this.particleData.resize(dataWidth, dataHeight);
+		else
+			this.particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.floatTextureFactoryRGBA, dataWidth, dataHeight);
+
+		
+		//create particle vertex buffers that direct vertex shaders to particles to texel coordinates
+		if(this.particleUVs != null) gl.deleteBuffer(this.particleUVs);//clear old buffer
+		this.particleUVs = gl.createBuffer();
+
+		var arrayUVs = new Array<Float>();
+		for(i in 0...dataWidth){
+			for(j in 0...dataHeight){
+				arrayUVs.push(i/dataWidth);
+				arrayUVs.push(j/dataHeight);
+			}
+		}
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.particleUVs);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arrayUVs), gl.STATIC_DRAW);
+		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+		return this.count = newCount;
+	}
+
 	inline function renderShaderTo(shader:ShaderBase, target:RenderTarget2Phase){
 		gl.viewport(0, 0, target.width, target.height);
 		gl.bindFramebuffer(gl.FRAMEBUFFER, target.writeFrameBufferObject);
-
-		gl.clearColor(0,0,0,1);
-		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, textureQuad);
 
@@ -105,7 +113,6 @@ class GPUParticles{
 
 		target.swap();
 	}
-
 
 	inline function get_dragCoefficient()   return stepParticlesShader.dragCoefficient.data;
 	inline function get_flowScaleX()         return stepParticlesShader.flowScale.data.x;
@@ -136,7 +143,7 @@ class GPUParticles{
 @:frag('
 	varying vec2 texelCoord;
 ')
-class TextureShader extends ShaderBase{}
+class PlaneTexture extends ShaderBase{}
 
 @:frag('
 	void main(){
@@ -145,7 +152,7 @@ class TextureShader extends ShaderBase{}
 		gl_FragColor = vec4(ip, iv);
 	}
 ')
-class InitialConditions extends TextureShader{}
+class InitialConditions extends PlaneTexture{}
 
 @:frag('
 	uniform float dt;
@@ -154,7 +161,7 @@ class InitialConditions extends TextureShader{}
 	vec2 p = texture2D(particleData, texelCoord).xy;
 	vec2 v = texture2D(particleData, texelCoord).zw;
 ')
-class ParticleBase extends TextureShader{}
+class ParticleBase extends PlaneTexture{}
 
 @:frag('
 	uniform bool flowEnabled;
