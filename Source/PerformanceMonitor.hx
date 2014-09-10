@@ -15,6 +15,8 @@ class PerformanceMonitor{
 
 	public inline function recordFrameTime(dt_seconds:Float)recordFPS(1/dt_seconds);
 	public inline function recordFPS(fps:Float){
+		//#! should clip unreasonable fps
+
 		fpsSample.add(fps);
 	}
 

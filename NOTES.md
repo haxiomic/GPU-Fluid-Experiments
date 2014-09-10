@@ -12,6 +12,7 @@ TODO:
 	- handle resize
 	- need fallback for interpolation when OES_texture_float_linear is not supported (simply bilerp in relevant shaders controlled by glsl define)
 	- fallback to power of two textures in fluid for speed / compatibility in gltoolbox
+	- Fluid shouldn't really manage the dye
 
 - Reading rigid body force data back to CPU with gl.readpixels:
 	- [http://concord-consortium.github.io/lab/experiments/webgl-gpgpu/webgl.html]()
@@ -20,3 +21,4 @@ TODO:
 BUGS in Other Things:
 	- Chrome, if missing OES_texture_float_linear, chrome errors incorrectly missing OES_float_linear
 	- Haxe bool != operator does not invert
+	- Haxe Map.set should return the item set
