@@ -13,7 +13,7 @@ Clip space where aspect ratio is maintained and height is fixed at 1
 varying vec2 p;
 
 void main() {
-	texelCoord = vertexPosition*invresolution;
+	texelCoord = vertexPosition;
 	
 	vec2 clipSpace = 2.0*texelCoord - 1.0;	//from 0->1 to -1, 1 (clip space)
 	
