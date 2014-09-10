@@ -15,5 +15,6 @@
 	<haxelib name="lime" />
 	<haxelib name="shaderblox" />
 	<haxelib name="gltoolbox" />
+	<haxelib name="browsermonitor" />
 
 </project>
