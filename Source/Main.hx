@@ -1,5 +1,6 @@
 package;
 
+import browsermonitor.BrowserMonitor;
 import gltoolbox.render.RenderTarget;
 import haxe.Timer;
 import lime.app.Application;
@@ -42,17 +43,26 @@ class Main extends Application {
 	var renderParticlesEnabled:Bool = true;
 	var renderFluidEnabled:Bool = true;
 
+	var performanceMonitor:PerformanceMonitor;
 	#if js
 	var browserMonitor:BrowserMonitor;
 	#end
 	
 	public function new () {
 		super();
-				
+
+		performanceMonitor = new PerformanceMonitor(30, 70, 10);
+
 		#if js
 		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
-		browserMonitor.sendReportAfterTime(8);
+		// browserMonitor.sendReportAfterTime(8);
 		#end
+
+		haxe.Timer.delay(function(){
+			// particles.setCount(Math.round(particles.count*.5));
+			// var scaleFactor = 1/6;
+			// fluid.resize(Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor));
+		}, 4 * 1000 );
 	}
 
 	public override function init (context:RenderContext):Void {
@@ -92,7 +102,7 @@ class Main extends Application {
 				var scaleFactor = 1/4;
 				var fluidIterations = 20;
 				var fluidScale = 32;
-				var particleCount = 524288;
+				var particleCount = 1 << 17;
 
 				#if js
 					scaleFactor = 1/4;
@@ -137,10 +147,6 @@ class Main extends Application {
 		time = haxe.Timer.stamp();
 		var dt = time - lastTime; //60fps ~ 0.016
 		lastTime = time;
-
-		#if js
-		browserMonitor.addDt(dt*1000);
-		#end
 
 		//update mouse velocity
 		if(lastMousePointKnown){

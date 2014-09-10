@@ -1,7 +1,6 @@
 /* Converts to clip space, given resolution of display in pixel space */ 
 attribute vec2 vertexPosition;
 
-uniform vec2 invresolution;
 uniform float aspectRatio;
 
 varying vec2 texelCoord;
