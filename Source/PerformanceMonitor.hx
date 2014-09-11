@@ -17,10 +17,15 @@ class PerformanceMonitor{
 
 	var fpsSample:RollingSample;
 
-	public function new(lowerBoundFPS:Float = 30, ?upperBoundFPS:Float, sampleSize:Int = 40){
+	var framesTooLow:Int = 0;
+	var framesTooHigh:Int = 0;
+	var frameThreshold:Int;
+
+	public function new(lowerBoundFPS:Float = 30, ?upperBoundFPS:Float, sampleSize:Int = 60, frameThreshold:Int = 100){
 		this.lowerBoundFPS = lowerBoundFPS;
 		this.upperBoundFPS = upperBoundFPS;
 		this.fpsSample = new RollingSample(sampleSize);
+		this.frameThreshold = frameThreshold;
 	}
 
 	public inline function recordFrameTime(dt_seconds:Float) if(dt_seconds>0) recordFPS(1/dt_seconds);
@@ -28,21 +33,32 @@ class PerformanceMonitor{
 		//clip readings
 		if(fps < fpsIgnoreBounds[0] && fps > fpsIgnoreBounds[1]) return;
 		fpsSample.add(fps);
-
 		//check if sample is completed
 		if(fpsSample.sampleCount < fpsSample.length) return;
 
-		if(fpsSample.variance < 8*8){
 
-			if(fpsSample.average < lowerBoundFPS){
-				fpsTooLowCallback((lowerBoundFPS - fpsSample.average) / lowerBoundFPS);
+		if((fpsSample.average - fpsSample.standardDeviation * .5) < lowerBoundFPS){
+			framesTooLow++;
+			framesTooHigh = 0;
+			if(framesTooLow >= frameThreshold){
+				fpsTooLowCallback((lowerBoundFPS - (fpsSample.average - fpsSample.standardDeviation * .5)) / lowerBoundFPS);
 				fpsSample.clear();
-			}else if(fpsSample.average > upperBoundFPS){
+				framesTooLow = 0;
+			}
+		}else if(fpsSample.average > upperBoundFPS){
+			framesTooHigh++;
+			framesTooLow = 0;
+
+			if(framesTooHigh >= frameThreshold){
 				fpsTooHighCallback((fpsSample.average - upperBoundFPS) / upperBoundFPS);
 				fpsSample.clear();
+				framesTooHigh = 0;
 			}
-
+		}else{
+			framesTooLow = 0;
+			framesTooHigh = 0;
 		}
+
 	}
 
 	inline function get_fpsAverage():Float return fpsSample.average;

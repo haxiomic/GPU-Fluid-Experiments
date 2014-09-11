@@ -76,10 +76,11 @@ class GPUParticles{
 		var dataHeight:Int = dataWidth;
 
 		//create particle data texture
-		if(this.particleData != null)
+		if(this.particleData != null){
 			this.particleData.resize(dataWidth, dataHeight);
-		else
+		}else{
 			this.particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.floatTextureFactoryRGBA, dataWidth, dataHeight);
+		}
 
 		
 		//create particle vertex buffers that direct vertex shaders to particles to texel coordinates

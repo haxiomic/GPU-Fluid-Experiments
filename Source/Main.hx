@@ -29,6 +29,7 @@ class Main extends Application {
 	var particleCount:Int;
 	var fluidScale:Float;
 	var fluidIterations:Int;
+	var simulationQuality(default, set):SimulationQuality;
 	//Geometry
 	var textureQuad:GLBuffer = null; 
 	//Framebuffers
@@ -62,7 +63,8 @@ class Main extends Application {
 	public function new () {
 		super();
 
-		performanceMonitor = new PerformanceMonitor(50, 70);
+		performanceMonitor = new PerformanceMonitor(45);
+		performanceMonitor.fpsTooLowCallback = lowerQualityRequired;
 
 		#if js
 		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
@@ -71,7 +73,7 @@ class Main extends Application {
 	}
 
 	public override function init (context:RenderContext):Void {
-		setSimulationQuality(Medium);
+		simulationQuality = High;
 
 		switch (context) {
 			case OPENGL (gl):
@@ -215,7 +217,7 @@ class Main extends Application {
 		renderParticlesShader.deactivate();
 	}
 
-	inline function setSimulationQuality(quality:SimulationQuality){
+	function set_simulationQuality(quality:SimulationQuality):SimulationQuality{
 		switch (quality) {
 			case UltraHigh:
 				particleCount = 1 << 20;
@@ -238,13 +240,56 @@ class Main extends Application {
 				fluidScale = 1/6;
 				fluidIterations = 12;
 		}
+		return simulationQuality = quality;
 	}
 
-	inline function updateSimulationQuality(){
+	function updateSimulationQuality(){
 		fluid.resize(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale));
 		fluid.solverIterations = fluidIterations;
 		particles.setCount(particleCount);
 	}
+
+	var qualityDirection:Int = 0;
+	function lowerQualityRequired(magnitude:Float){
+		if(qualityDirection>0)return;
+		qualityDirection = -1;
+		var qualityIndex = Type.enumIndex(this.simulationQuality);
+		var maxIndex = Type.allEnums(SimulationQuality).length - 1;
+		if(qualityIndex >= maxIndex)return;
+
+		if(magnitude < 0.5) qualityIndex +=1;
+		else                qualityIndex +=2;
+
+		if(qualityIndex > maxIndex)qualityIndex = maxIndex;
+
+		var newQuality = Type.createEnumIndex(SimulationQuality, qualityIndex);
+		trace('Lowering quality to: '+newQuality);
+		this.simulationQuality = newQuality;
+		updateSimulationQuality();
+	}
+
+	//!# Requires better upsampling before use!
+	function higherQualityRequired(magnitude:Float){
+		if(qualityDirection<0)return;
+		qualityDirection = 1;
+
+		var qualityIndex = Type.enumIndex(this.simulationQuality);
+		var minIndex = 0;
+		if(qualityIndex <= minIndex)return;
+
+		if(magnitude < 0.5) qualityIndex -=1;
+		else                qualityIndex -=2;
+
+		if(qualityIndex < minIndex)qualityIndex = minIndex;
+
+		var newQuality = Type.createEnumIndex(SimulationQuality, qualityIndex);
+		trace('Raising quality to: '+newQuality);
+		this.simulationQuality = newQuality;
+		updateSimulationQuality();
+	}
+
+
+	//---- Interface ----//
 
 	function reset():Void{
 		particles.reset();	
@@ -328,7 +373,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 		if(isMouseDown){			
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
-			vec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;
+			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
 			
 			
 			float projection;
@@ -340,7 +385,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 			
  			
  			float speed = length(mouseVelocity);
-			float x = clamp((speed * speed * 0.00002 - l * 5.0) * projectedFraction, 0., 1.);
+			float x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);
 			color.rgb += m * (
 				mix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)
  				+ (vec3(100) / 100.) * pow(x, 9.)
@@ -365,7 +410,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 		if(isMouseDown){
 			vec2 mouse = clipToSimSpace(mouseClipSpace);
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
-			vec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;
+			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
 				
 			//compute tapered distance to mouse line segment
 			float projection;
@@ -377,7 +422,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float m = exp(-l/R); //drag coefficient
 			m *= projectedFraction * projectedFraction;
 
-			vec2 tv = mouseVelocity;
+			vec2 tv = mouseVelocity*dx;
 			// float maxSpeed = 10.04 * dx / dt;
 			// tv = clamp(tv, -maxSpeed, maxSpeed); //impose max speed
 			v += (tv - v)*m;
