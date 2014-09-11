@@ -26,86 +26,6 @@ ApplicationMain.start = function() {
 	ApplicationMain.app.create(ApplicationMain.config);
 	var result = ApplicationMain.app.exec();
 };
-var BrowserMonitor = function(serverURL,app,storeConsoleOutput) {
-	if(storeConsoleOutput == null) storeConsoleOutput = false;
-	this.timeSamples = 0;
-	this.storeConsoleOutput = false;
-	this.userData = { };
-	this.mouseClicks = 0;
-	this.averageFrameTime = 0;
-	this.averageFPS = 0;
-	var _g = this;
-	this.serverURL = serverURL;
-	this.app = app;
-	this.storeConsoleOutput = storeConsoleOutput;
-	this.userAgent = window.navigator.userAgent;
-	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
-	this.windowWidth = window.innerWidth;
-	this.windowHeight = window.innerHeight;
-	lime.ui.MouseEventManager.onMouseUp.add(function(x,y,button) {
-		_g.mouseClicks++;
-	});
-	if(storeConsoleOutput) {
-		this.consoleLog = new Array();
-		this.consoleError = new Array();
-		this.consoleWarn = new Array();
-		(function() {
-			var oldLog = console.log;
-			var oldError = console.error;
-			var oldWarn = console.warn;
-			console.log = function(message) {
-				_g.consoleLog.push(message);
-				oldLog.apply(console,eval("arguments"));
-			};
-			console.error = function(message1) {
-				oldError.push(message1);
-				oldError.apply(console,eval("arguments"));
-			};
-			console.warn = function(message2) {
-				oldWarn.push(message2);
-				oldWarn.apply(console,eval("arguments"));
-			};
-		})();
-	}
-};
-$hxClasses["BrowserMonitor"] = BrowserMonitor;
-BrowserMonitor.__name__ = true;
-BrowserMonitor.prototype = {
-	sendReportAfterTime: function(seconds) {
-		haxe.Timer.delay($bind(this,this.sendReport),seconds * 1000);
-	}
-	,sendReport: function() {
-		if(this.serverURL == null) return;
-		var data = this.createReportJSON();
-		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 95, className : "BrowserMonitor", methodName : "sendReport", customParams : [data]});
-		var request = new XMLHttpRequest();
-		request.open("POST",this.serverURL,true);
-		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
-		request.send(data);
-	}
-	,isSafari: function() {
-		return new EReg("Safari","i").match(this.browserName);
-	}
-	,isChrome: function() {
-		return new EReg("Chrome","i").match(this.browserName);
-	}
-	,isFirefox: function() {
-		return new EReg("Firefox","i").match(this.browserName);
-	}
-	,addDt: function(dt_ms) {
-		if(dt_ms > 8.3 && dt_ms < 200.) {
-			this.averageFrameTime = this.averageFrameTime / (1 + 1 / this.timeSamples) + dt_ms / (this.timeSamples + 1);
-			this.averageFPS = 1000 / this.averageFrameTime;
-			this.timeSamples++;
-		}
-	}
-	,createReportJSON: function() {
-		var json = { browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData};
-		if(this.storeConsoleOutput) json.console = { log : this.consoleLog, error : this.consoleError, warn : this.consoleWarn};
-		return JSON.stringify(json);
-	}
-	,__class__: BrowserMonitor
-};
 var lime = {};
 lime.AssetLibrary = function() {
 };
@@ -283,40 +203,49 @@ EReg.prototype = {
 var GPUFluid = function(gl,width,height,cellSize,solverIterations) {
 	if(solverIterations == null) solverIterations = 18;
 	if(cellSize == null) cellSize = 8;
+	this.pressureGradientSubstractShader = new PressureGradientSubstract();
+	this.pressureSolveShader = new PressureSolve();
+	this.divergenceShader = new Divergence();
+	this.advectShader = new Advect();
 	this.gl = gl;
 	this.width = width;
 	this.height = height;
-	this.cellSize = cellSize;
 	this.solverIterations = solverIterations;
 	this.aspectRatio = this.width / this.height;
+	this.cellSize = cellSize;
+	this.advectShader.rdx.set(1 / this.cellSize);
+	this.divergenceShader.halfrdx.set(0.5 * (1 / this.cellSize));
+	this.pressureGradientSubstractShader.halfrdx.set(0.5 * (1 / this.cellSize));
+	this.pressureSolveShader.alpha.set(-this.cellSize * this.cellSize);
+	this.cellSize;
 	var texture_float_linear_supported = true;
 	if(gl.getExtension("OES_texture_float_linear") == null) texture_float_linear_supported = false;
 	if(gl.getExtension("OES_texture_float") == null) null;
-	this.renderQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,width,height,gl.TRIANGLE_STRIP,null);
+	this.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
 	var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.FLOAT,gl.NEAREST,null);
 	this.velocityRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,nearestFactory,width,height);
 	this.pressureRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,nearestFactory,width,height);
 	this.divergenceRenderTarget = new gltoolbox.render.RenderTarget(gl,nearestFactory,width,height);
 	this.dyeRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGB,gl.FLOAT,texture_float_linear_supported?gl.LINEAR:gl.NEAREST,null),width,height);
-	this.advectShader = new Advect();
-	this.divergenceShader = new Divergence();
-	this.pressureSolveShader = new PressureSolve();
-	this.pressureGradientSubstractShader = new PressureGradientSubstract();
-	this.passBaseUniforms(this.advectShader);
-	this.passBaseUniforms(this.divergenceShader);
-	this.passBaseUniforms(this.pressureSolveShader);
-	this.passBaseUniforms(this.pressureGradientSubstractShader);
-	this.advectShader.rdx.set(1 / cellSize);
-	this.divergenceShader.halfrdx.set(0.5 * (1 / cellSize));
-	this.pressureGradientSubstractShader.halfrdx.set(0.5 * (1 / cellSize));
-	this.pressureSolveShader.alpha.set(-cellSize * cellSize);
+	this.updateCoreShaderUniforms(this.advectShader);
+	this.updateCoreShaderUniforms(this.divergenceShader);
+	this.updateCoreShaderUniforms(this.pressureSolveShader);
+	this.updateCoreShaderUniforms(this.pressureGradientSubstractShader);
 };
 $hxClasses["GPUFluid"] = GPUFluid;
 GPUFluid.__name__ = true;
 GPUFluid.prototype = {
-	step: function(dt) {
+	resize: function(width,height) {
+		this.velocityRenderTarget.resize(width,height);
+		this.pressureRenderTarget.resize(width,height);
+		this.divergenceRenderTarget.resize(width,height);
+		this.dyeRenderTarget.resize(width,height);
+		this.width = width;
+		this.height = height;
+	}
+	,step: function(dt) {
 		this.gl.viewport(0,0,this.width,this.height);
-		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.renderQuad);
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.textureQuad);
 		this.advect(this.velocityRenderTarget,dt);
 		if(this.applyForcesShader == null) null; else {
 			this.applyForcesShader.dt.set(dt);
@@ -412,7 +341,7 @@ GPUFluid.prototype = {
 		this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
 		shader.deactivate();
 	}
-	,passBaseUniforms: function(shader) {
+	,updateCoreShaderUniforms: function(shader) {
 		if(shader == null) return;
 		shader.aspectRatio.set(this.aspectRatio);
 		shader.invresolution.data.x = 1 / this.width;
@@ -421,14 +350,22 @@ GPUFluid.prototype = {
 	,set_applyForcesShader: function(v) {
 		this.applyForcesShader = v;
 		this.applyForcesShader.dx.set_data(this.cellSize);
-		this.passBaseUniforms(this.applyForcesShader);
+		this.updateCoreShaderUniforms(this.applyForcesShader);
 		return this.applyForcesShader;
 	}
 	,set_updateDyeShader: function(v) {
 		this.updateDyeShader = v;
 		this.updateDyeShader.dx.set_data(this.cellSize);
-		this.passBaseUniforms(this.updateDyeShader);
+		this.updateCoreShaderUniforms(this.updateDyeShader);
 		return this.updateDyeShader;
+	}
+	,set_cellSize: function(v) {
+		this.cellSize = v;
+		this.advectShader.rdx.set(1 / this.cellSize);
+		this.divergenceShader.halfrdx.set(0.5 * (1 / this.cellSize));
+		this.pressureGradientSubstractShader.halfrdx.set(0.5 * (1 / this.cellSize));
+		this.pressureSolveShader.alpha.set(-this.cellSize * this.cellSize);
+		return this.cellSize;
 	}
 	,__class__: GPUFluid
 };
@@ -605,16 +542,16 @@ FluidBase.__name__ = true;
 FluidBase.__super__ = shaderblox.ShaderBase;
 FluidBase.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
 		shaderblox.ShaderBase.prototype.createProperties.call(this);
-		var instance = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UVec2"),["invresolution",-1]);
-		this.invresolution = instance;
+		var instance = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UFloat"),["aspectRatio",-1]);
+		this.aspectRatio = instance;
 		this.uniforms.push(instance);
-		var instance1 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UFloat"),["aspectRatio",-1]);
-		this.aspectRatio = instance1;
+		var instance1 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UVec2"),["invresolution",-1]);
+		this.invresolution = instance1;
 		this.uniforms.push(instance1);
 		var instance2 = Type.createInstance(Type.resolveClass("shaderblox.attributes.FloatAttribute"),["vertexPosition",0,2]);
 		this.vertexPosition = instance2;
@@ -631,7 +568,7 @@ Advect.__name__ = true;
 Advect.__super__ = FluidBase;
 Advect.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\nuniform sampler2D target;\nuniform float dt;\nuniform float rdx; \n\nvarying vec2 texelCoord;\nvarying vec2 p;\n\nvoid main(void){\n  \n  \n  vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy;\n\n  \n  tracedPos = simToTexelSpace(tracedPos)/invresolution; \n  \n  vec4 st;\n  st.xy = floor(tracedPos-.5)+.5; \n  st.zw = st.xy+1.;               \n\n  vec2 t = tracedPos - st.xy;\n\n  st*=invresolution.xyxy; \n  \n  vec4 tex11 = texture2D(target, st.xy );\n  vec4 tex21 = texture2D(target, st.zy );\n  vec4 tex12 = texture2D(target, st.xw );\n  vec4 tex22 = texture2D(target, st.zw );\n\n  \n  gl_FragColor = mix(mix(tex11, tex21, t.x), mix(tex12, tex22, t.x), t.y);\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\nuniform sampler2D target;\nuniform float dt;\nuniform float rdx; \n\nvarying vec2 texelCoord;\nvarying vec2 p;\n\nvoid main(void){\n  \n  \n  vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy;\n\n  \n  tracedPos = simToTexelSpace(tracedPos)/invresolution; \n  \n  vec4 st;\n  st.xy = floor(tracedPos-.5)+.5; \n  st.zw = st.xy+1.;               \n\n  vec2 t = tracedPos - st.xy;\n\n  st*=invresolution.xyxy; \n  \n  vec4 tex11 = texture2D(target, st.xy );\n  vec4 tex21 = texture2D(target, st.zy );\n  vec4 tex12 = texture2D(target, st.xw );\n  vec4 tex22 = texture2D(target, st.zw );\n\n  \n  gl_FragColor = mix(mix(tex11, tex21, t.x), mix(tex12, tex22, t.x), t.y);\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -660,7 +597,7 @@ Divergence.__name__ = true;
 Divergence.__super__ = FluidBase;
 Divergence.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\t\nuniform float halfrdx;\t\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvoid main(void){\r\n\t\n \t\n\tvec2 L = sampleVelocity(velocity, texelCoord - vec2(invresolution.x, 0));\r\n\tvec2 R = sampleVelocity(velocity, texelCoord + vec2(invresolution.x, 0));\r\n\tvec2 B = sampleVelocity(velocity, texelCoord - vec2(0, invresolution.y));\r\n\tvec2 T = sampleVelocity(velocity, texelCoord + vec2(0, invresolution.y));\r\n\r\n\tgl_FragColor = vec4( halfrdx * ((R.x - L.x) + (T.y - B.y)), 0, 0, 1);\r\n}\r\n\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\t\nuniform float halfrdx;\t\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvoid main(void){\r\n\t\n \t\n\tvec2 L = sampleVelocity(velocity, texelCoord - vec2(invresolution.x, 0));\r\n\tvec2 R = sampleVelocity(velocity, texelCoord + vec2(invresolution.x, 0));\r\n\tvec2 B = sampleVelocity(velocity, texelCoord - vec2(0, invresolution.y));\r\n\tvec2 T = sampleVelocity(velocity, texelCoord + vec2(0, invresolution.y));\r\n\r\n\tgl_FragColor = vec4( halfrdx * ((R.x - L.x) + (T.y - B.y)), 0, 0, 1);\r\n}\r\n\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -683,7 +620,7 @@ PressureSolve.__name__ = true;
 PressureSolve.__super__ = FluidBase;
 PressureSolve.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\nuniform sampler2D divergence;\nuniform float alpha;\n\nvarying vec2 texelCoord;\n\nvoid main(void){\n  \n  \n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\n\n  float bC = texture2D(divergence, texelCoord).x;\n\n  gl_FragColor = vec4( (L + R + B + T + alpha * bC) * .25, 0, 0, 1 );\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\nuniform sampler2D divergence;\nuniform float alpha;\n\nvarying vec2 texelCoord;\n\nvoid main(void){\n  \n  \n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\n\n  float bC = texture2D(divergence, texelCoord).x;\n\n  gl_FragColor = vec4( (L + R + B + T + alpha * bC) * .25, 0, 0, 1 );\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -709,7 +646,7 @@ PressureGradientSubstract.__name__ = true;
 PressureGradientSubstract.__super__ = FluidBase;
 PressureGradientSubstract.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\r\nuniform sampler2D velocity;\r\nuniform float halfrdx;\r\n\r\nvarying vec2 texelCoord;\r\n\r\nvoid main(void){\r\n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\r\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\r\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\r\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\r\n\r\n  vec2 v = texture2D(velocity, texelCoord).xy;\r\n\r\n  gl_FragColor = vec4(v - halfrdx*vec2(R-L, T-B), 0, 1);\r\n}\r\n\r\n\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\r\nuniform sampler2D velocity;\r\nuniform float halfrdx;\r\n\r\nvarying vec2 texelCoord;\r\n\r\nvoid main(void){\r\n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\r\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\r\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\r\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\r\n\r\n  vec2 v = texture2D(velocity, texelCoord).xy;\r\n\r\n  gl_FragColor = vec4(v - halfrdx*vec2(R-L, T-B), 0, 1);\r\n}\r\n\r\n\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -735,7 +672,7 @@ ApplyForces.__name__ = true;
 ApplyForces.__super__ = FluidBase;
 ApplyForces.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec2 v = texture2D(velocity, texelCoord).xy;\n\tvoid main(){\n\t\tgl_FragColor = vec4(v, 0, 0);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec2 v = texture2D(velocity, texelCoord).xy;\n\tvoid main(){\n\t\tgl_FragColor = vec4(v, 0, 0);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -761,7 +698,7 @@ UpdateDye.__name__ = true;
 UpdateDye.__super__ = FluidBase;
 UpdateDye.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec4 color = texture2D(dye, texelCoord);\n\tvoid main(){\n\t\tgl_FragColor = color;\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec4 color = texture2D(dye, texelCoord);\n\tvoid main(){\n\t\tgl_FragColor = color;\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -779,36 +716,18 @@ UpdateDye.prototype = $extend(FluidBase.prototype,{
 	}
 	,__class__: UpdateDye
 });
-var GPUParticles = function(gl,max) {
-	if(max == null) max = 524288;
+var GPUParticles = function(gl,count) {
+	if(count == null) count = 524288;
 	this.gl = gl;
 	gl.getExtension("OES_texture_float");
-	this.textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1,null,null);
-	var dataWidth = Math.ceil(Math.sqrt(max));
-	var dataHeight = dataWidth;
-	this.particleData = new gltoolbox.render.RenderTarget2Phase(gl,gltoolbox.TextureTools.floatTextureFactoryRGBA,dataWidth,dataHeight);
-	var arrayUVs = new Array();
-	var _g = 0;
-	while(_g < dataWidth) {
-		var i = _g++;
-		var _g1 = 0;
-		while(_g1 < dataHeight) {
-			var j = _g1++;
-			arrayUVs.push(i / dataWidth);
-			arrayUVs.push(j / dataHeight);
-		}
-	}
-	this.particleUVs = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER,this.particleUVs);
-	gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(arrayUVs),gl.STATIC_DRAW);
-	gl.bindBuffer(gl.ARRAY_BUFFER,null);
+	this.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
 	this.inititalConditionsShader = new InitialConditions();
 	this.stepParticlesShader = new StepParticles();
 	this.stepParticlesShader.dragCoefficient.set_data(1);
 	this.stepParticlesShader.flowScale.data.x = 1;
 	this.stepParticlesShader.flowScale.data.y = 1;
 	this.stepParticlesShader.flowEnabled.set_data(false);
-	this.count = this.particleData.width * this.particleData.height;
+	this.setCount(count);
 	this.renderShaderTo(this.inititalConditionsShader,this.particleData);
 };
 $hxClasses["GPUParticles"] = GPUParticles;
@@ -822,11 +741,31 @@ GPUParticles.prototype = {
 	,reset: function() {
 		this.renderShaderTo(this.inititalConditionsShader,this.particleData);
 	}
+	,setCount: function(newCount) {
+		var dataWidth = Math.ceil(Math.sqrt(newCount));
+		var dataHeight = dataWidth;
+		if(this.particleData != null) this.particleData.resize(dataWidth,dataHeight); else this.particleData = new gltoolbox.render.RenderTarget2Phase(this.gl,gltoolbox.TextureTools.floatTextureFactoryRGBA,dataWidth,dataHeight);
+		if(this.particleUVs != null) this.gl.deleteBuffer(this.particleUVs);
+		this.particleUVs = this.gl.createBuffer();
+		var arrayUVs = new Array();
+		var _g = 0;
+		while(_g < dataWidth) {
+			var i = _g++;
+			var _g1 = 0;
+			while(_g1 < dataHeight) {
+				var j = _g1++;
+				arrayUVs.push(i / dataWidth);
+				arrayUVs.push(j / dataHeight);
+			}
+		}
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.particleUVs);
+		this.gl.bufferData(this.gl.ARRAY_BUFFER,new Float32Array(arrayUVs),this.gl.STATIC_DRAW);
+		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,null);
+		return this.count = newCount;
+	}
 	,renderShaderTo: function(shader,target) {
 		this.gl.viewport(0,0,target.width,target.height);
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,target.writeFrameBufferObject);
-		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.textureQuad);
 		if(shader.active) {
 			shader.setUniforms();
@@ -881,13 +820,13 @@ GPUParticles.prototype = {
 	}
 	,__class__: GPUParticles
 };
-var TextureShader = function() {
+var PlaneTexture = function() {
 	shaderblox.ShaderBase.call(this);
 };
-$hxClasses["TextureShader"] = TextureShader;
-TextureShader.__name__ = true;
-TextureShader.__super__ = shaderblox.ShaderBase;
-TextureShader.prototype = $extend(shaderblox.ShaderBase.prototype,{
+$hxClasses["PlaneTexture"] = PlaneTexture;
+PlaneTexture.__name__ = true;
+PlaneTexture.__super__ = shaderblox.ShaderBase;
+PlaneTexture.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
 		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n");
 		this.ready = true;
@@ -899,38 +838,38 @@ TextureShader.prototype = $extend(shaderblox.ShaderBase.prototype,{
 		this.attributes.push(instance);
 		this.aStride += 8;
 	}
-	,__class__: TextureShader
+	,__class__: PlaneTexture
 });
 var InitialConditions = function() {
-	TextureShader.call(this);
+	PlaneTexture.call(this);
 };
 $hxClasses["InitialConditions"] = InitialConditions;
 InitialConditions.__name__ = true;
-InitialConditions.__super__ = TextureShader;
-InitialConditions.prototype = $extend(TextureShader.prototype,{
+InitialConditions.__super__ = PlaneTexture;
+InitialConditions.prototype = $extend(PlaneTexture.prototype,{
 	create: function() {
 		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n\nvoid main(){\n\t\tvec2 ip = vec2((texelCoord.x), (texelCoord.y)) * 2.0 - 1.0;\n\t\tvec2 iv = vec2(0,0);\n\t\tgl_FragColor = vec4(ip, iv);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
-		TextureShader.prototype.createProperties.call(this);
+		PlaneTexture.prototype.createProperties.call(this);
 		this.aStride += 0;
 	}
 	,__class__: InitialConditions
 });
 var ParticleBase = function() {
-	TextureShader.call(this);
+	PlaneTexture.call(this);
 };
 $hxClasses["ParticleBase"] = ParticleBase;
 ParticleBase.__name__ = true;
-ParticleBase.__super__ = TextureShader;
-ParticleBase.prototype = $extend(TextureShader.prototype,{
+ParticleBase.__super__ = PlaneTexture;
+ParticleBase.prototype = $extend(PlaneTexture.prototype,{
 	create: function() {
 		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n\nuniform float dt;\n\tuniform sampler2D particleData;\n\tvec2 p = texture2D(particleData, texelCoord).xy;\n\tvec2 v = texture2D(particleData, texelCoord).zw;\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
-		TextureShader.prototype.createProperties.call(this);
+		PlaneTexture.prototype.createProperties.call(this);
 		var instance = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UFloat"),["dt",-1]);
 		this.dt = instance;
 		this.uniforms.push(instance);
@@ -1072,6 +1011,23 @@ List.prototype = {
 	}
 	,__class__: List
 };
+var SimulationQuality = $hxClasses["SimulationQuality"] = { __ename__ : true, __constructs__ : ["UltraHigh","High","Medium","Low","UltraLow"] };
+SimulationQuality.UltraHigh = ["UltraHigh",0];
+SimulationQuality.UltraHigh.toString = $estr;
+SimulationQuality.UltraHigh.__enum__ = SimulationQuality;
+SimulationQuality.High = ["High",1];
+SimulationQuality.High.toString = $estr;
+SimulationQuality.High.__enum__ = SimulationQuality;
+SimulationQuality.Medium = ["Medium",2];
+SimulationQuality.Medium.toString = $estr;
+SimulationQuality.Medium.__enum__ = SimulationQuality;
+SimulationQuality.Low = ["Low",3];
+SimulationQuality.Low.toString = $estr;
+SimulationQuality.Low.__enum__ = SimulationQuality;
+SimulationQuality.UltraLow = ["UltraLow",4];
+SimulationQuality.UltraLow.toString = $estr;
+SimulationQuality.UltraLow.__enum__ = SimulationQuality;
+SimulationQuality.__empty_constructs__ = [SimulationQuality.UltraHigh,SimulationQuality.High,SimulationQuality.Medium,SimulationQuality.Low,SimulationQuality.UltraLow];
 lime.app = {};
 lime.app.Module = function() {
 };
@@ -1269,6 +1225,7 @@ lime.app.Application.prototype = $extend(lime.app.Module.prototype,{
 	,__class__: lime.app.Application
 });
 var Main = function() {
+	this.qualityDirection = 0;
 	this.renderFluidEnabled = true;
 	this.renderParticlesEnabled = true;
 	this.lastMouseClipSpace = new lime.math.Vector2();
@@ -1281,14 +1238,16 @@ var Main = function() {
 	this.screenBuffer = null;
 	this.textureQuad = null;
 	lime.app.Application.call(this);
-	this.browserMonitor = new BrowserMonitor("http://awestronomer.com/services/browser-monitor/",this,false);
-	this.browserMonitor.sendReportAfterTime(8);
+	this.performanceMonitor = new PerformanceMonitor(45);
+	this.performanceMonitor.fpsTooLowCallback = $bind(this,this.lowerQualityRequired);
+	this.browserMonitor = new browsermonitor.BrowserMonitor("http://awestronomer.com/services/browser-monitor/",this,false);
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
 Main.__super__ = lime.app.Application;
 Main.prototype = $extend(lime.app.Application.prototype,{
 	init: function(context) {
+		this.set_simulationQuality(SimulationQuality.High);
 		switch(context[1]) {
 		case 0:
 			var gl = context[2];
@@ -1296,7 +1255,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			gl.disable(gl.DEPTH_TEST);
 			gl.disable(gl.CULL_FACE);
 			gl.disable(gl.DITHER);
-			this.textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1,null,null);
+			this.textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1);
 			this.offScreenTarget = new gltoolbox.render.RenderTarget(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.UNSIGNED_BYTE,gl.NEAREST,null),Math.round(this.windows[0].width / 1),Math.round(this.windows[0].height / 1));
 			this.screenTextureShader = new ScreenTexture();
 			this.renderParticlesShader = new ColorParticleMotion();
@@ -1306,33 +1265,25 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.updateDyeShader.lastMouseClipSpace.set_data(this.lastMouseClipSpace);
 			this.mouseForceShader.mouseClipSpace.set_data(this.mouseClipSpace);
 			this.mouseForceShader.lastMouseClipSpace.set_data(this.lastMouseClipSpace);
-			var scaleFactor = 0.25;
-			var fluidIterations = 20;
-			var fluidScale = 32;
-			var particleCount = 524288;
-			scaleFactor = 0.25;
-			fluidIterations = 18;
-			this.fluid = new GPUFluid(gl,Math.round(this.windows[0].width * scaleFactor),Math.round(this.windows[0].height * scaleFactor),fluidScale,fluidIterations);
+			var cellScale = 32;
+			this.fluid = new GPUFluid(gl,Math.round(this.windows[0].width * this.fluidScale),Math.round(this.windows[0].height * this.fluidScale),cellScale,this.fluidIterations);
 			this.fluid.set_updateDyeShader(this.updateDyeShader);
 			this.fluid.set_applyForcesShader(this.mouseForceShader);
-			this.particles = new GPUParticles(gl,particleCount);
+			this.particles = new GPUParticles(gl,this.particleCount);
 			this.particles.set_flowScaleX(this.fluid.simToClipSpaceX(1));
 			this.particles.set_flowScaleY(this.fluid.simToClipSpaceY(1));
 			this.particles.stepParticlesShader.dragCoefficient.set_data(1);
 			this.browserMonitor.userData.texture_float_linear = gl.getExtension("OES_texture_float_linear") != null;
 			this.browserMonitor.userData.texture_float = gl.getExtension("OES_texture_float") != null;
-			this.browserMonitor.userData.scaleFactor = scaleFactor;
-			this.browserMonitor.userData.fluidIterations = fluidIterations;
-			this.browserMonitor.userData.fluidScale = fluidScale;
-			this.browserMonitor.userData.particleCount = particleCount;
-			if(new EReg("Safari","i").match(this.browserMonitor.browserName)) {
-				js.Lib.alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this demo only works in Chrome and Firefox");
-				return;
-			}
+			this.browserMonitor.userData.fluidScale = this.fluidScale;
+			this.browserMonitor.userData.fluidIterations = this.fluidIterations;
+			this.browserMonitor.userData.fluidScale = this.fluidScale;
+			this.browserMonitor.userData.particleCount = this.particleCount;
+			if(new EReg("Safari","i").match(this.browserMonitor.browserName)) js.Lib.alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this demo only works in Chrome and Firefox");
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 130, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 138, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1340,7 +1291,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.time = haxe.Timer.stamp();
 		var dt = this.time - this.lastTime;
 		this.lastTime = this.time;
-		this.browserMonitor.addDt(dt * 1000);
+		if(dt > 0) this.performanceMonitor.recordFPS(1 / dt);
 		if(this.lastMousePointKnown) {
 			this.updateDyeShader.isMouseDown.set(this.isMouseDown);
 			this.mouseForceShader.isMouseDown.set(this.isMouseDown);
@@ -1395,6 +1346,67 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.gl.drawArrays(this.gl.POINTS,0,this.particles.count);
 		this.renderParticlesShader.deactivate();
 	}
+	,set_simulationQuality: function(quality) {
+		switch(quality[1]) {
+		case 0:
+			this.particleCount = 1048576;
+			this.fluidScale = 0.5;
+			this.fluidIterations = 30;
+			break;
+		case 1:
+			this.particleCount = 1048576;
+			this.fluidScale = 0.25;
+			this.fluidIterations = 18;
+			break;
+		case 2:
+			this.particleCount = 262144;
+			this.fluidScale = 0.25;
+			this.fluidIterations = 16;
+			break;
+		case 3:
+			this.particleCount = 65536;
+			this.fluidScale = 0.2;
+			this.fluidIterations = 14;
+			break;
+		case 4:
+			this.particleCount = 16384;
+			this.fluidScale = 0.166666666666666657;
+			this.fluidIterations = 12;
+			break;
+		}
+		return this.simulationQuality = quality;
+	}
+	,updateSimulationQuality: function() {
+		this.fluid.resize(Math.round(this.windows[0].width * this.fluidScale),Math.round(this.windows[0].height * this.fluidScale));
+		this.fluid.solverIterations = this.fluidIterations;
+		this.particles.setCount(this.particleCount);
+	}
+	,lowerQualityRequired: function(magnitude) {
+		if(this.qualityDirection > 0) return;
+		this.qualityDirection = -1;
+		var qualityIndex = this.simulationQuality[1];
+		var maxIndex = Type.allEnums(SimulationQuality).length - 1;
+		if(qualityIndex >= maxIndex) return;
+		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
+		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
+		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
+		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 266, className : "Main", methodName : "lowerQualityRequired"});
+		this.set_simulationQuality(newQuality);
+		this.updateSimulationQuality();
+	}
+	,higherQualityRequired: function(magnitude) {
+		if(this.qualityDirection < 0) return;
+		this.qualityDirection = 1;
+		var qualityIndex = this.simulationQuality[1];
+		var minIndex = 0;
+		if(qualityIndex <= minIndex) return;
+		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
+		if(qualityIndex < minIndex) qualityIndex = minIndex;
+		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 286, className : "Main", methodName : "higherQualityRequired"});
+		this.set_simulationQuality(newQuality);
+		this.updateSimulationQuality();
+	}
 	,reset: function() {
 		this.particles.reset();
 	}
@@ -1428,7 +1440,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		case 112:
 			this.renderParticlesEnabled = !this.renderParticlesEnabled;
 			break;
-		case 102:
+		case 100:
 			this.renderFluidEnabled = !this.renderFluidEnabled;
 			break;
 		}
@@ -1483,7 +1495,7 @@ MouseDye.__name__ = true;
 MouseDye.__super__ = UpdateDye;
 MouseDye.prototype = $extend(UpdateDye.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec4 color = texture2D(dye, texelCoord);\n\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\telse                            return sqrt(dot(d,d) - projection*projection);\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tcolor.r *= (0.9797);\n\t\tcolor.g *= (0.9494);\n\t\tcolor.b *= (0.9696);\n\t\tif(isMouseDown){\t\t\t\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;\n\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.025;\n\t\t\tfloat m = exp(-l/R);\n\t\t\t\n \t\t\t\n \t\t\tfloat speed = length(mouseVelocity);\n\t\t\tfloat x = clamp((speed * speed * 0.00002 - l * 5.0) * projectedFraction, 0., 1.);\n\t\t\tcolor.rgb += m * (\n\t\t\t\tmix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)\n \t\t\t\t+ (vec3(100) / 100.) * pow(x, 9.)\n\t\t\t);\n\t\t}\n\t\tgl_FragColor = color;\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec4 color = texture2D(dye, texelCoord);\n\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\telse                            return sqrt(dot(d,d) - projection*projection);\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tcolor.r *= (0.9797);\n\t\tcolor.g *= (0.9494);\n\t\tcolor.b *= (0.9696);\n\t\tif(isMouseDown){\t\t\t\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)/dt;\n\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.025;\n\t\t\tfloat m = exp(-l/R);\n\t\t\t\n \t\t\t\n \t\t\tfloat speed = length(mouseVelocity);\n\t\t\tfloat x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);\n\t\t\tcolor.rgb += m * (\n\t\t\t\tmix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)\n \t\t\t\t+ (vec3(100) / 100.) * pow(x, 9.)\n\t\t\t);\n\t\t}\n\t\tgl_FragColor = color;\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1509,7 +1521,7 @@ MouseForce.__name__ = true;
 MouseForce.__super__ = ApplyForces;
 MouseForce.prototype = $extend(ApplyForces.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform vec2 invresolution;\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition*invresolution;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec2 v = texture2D(velocity, texelCoord).xy;\n\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\telse                            return sqrt(dot(d,d) - projection*projection);\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tv.xy *= 0.999;\n\t\tif(isMouseDown){\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)*dx/dt;\n\t\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.02;\n\t\t\tfloat m = exp(-l/R); \n\t\t\tm *= m * projectedFraction * projectedFraction;\n\t\t\tvec2 tv = mouseVelocity;\n\t\t\t\n\t\t\t\n\t\t\tv += (tv - v)*m;\n\t\t}\n\t\tgl_FragColor = vec4(v, 0, 1.);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\tvec2 v = texture2D(velocity, texelCoord).xy;\n\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\telse                            return sqrt(dot(d,d) - projection*projection);\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tv.xy *= 0.999;\n\t\tif(isMouseDown){\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)/dt;\n\t\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.015;\n\t\t\tfloat m = exp(-l/R); \n\t\t\tm *= projectedFraction * projectedFraction;\n\t\t\tvec2 tv = mouseVelocity*dx;\n\t\t\t\n\t\t\t\n\t\t\tv += (tv - v)*m;\n\t\t}\n\t\tgl_FragColor = vec4(v, 0, 1.);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1531,6 +1543,118 @@ var IMap = function() { };
 $hxClasses["IMap"] = IMap;
 IMap.__name__ = true;
 Math.__name__ = true;
+var PerformanceMonitor = function(lowerBoundFPS,upperBoundFPS,sampleSize,frameThreshold) {
+	if(frameThreshold == null) frameThreshold = 100;
+	if(sampleSize == null) sampleSize = 60;
+	if(lowerBoundFPS == null) lowerBoundFPS = 30;
+	this.framesTooHigh = 0;
+	this.framesTooLow = 0;
+	this.fpsTooHighCallback = function(v) {
+	};
+	this.fpsTooLowCallback = function(v) {
+	};
+	this.fpsIgnoreBounds = [5,180];
+	this.lowerBoundFPS = lowerBoundFPS;
+	this.upperBoundFPS = upperBoundFPS;
+	this.fpsSample = new RollingSample(sampleSize);
+	this.frameThreshold = frameThreshold;
+};
+$hxClasses["PerformanceMonitor"] = PerformanceMonitor;
+PerformanceMonitor.__name__ = true;
+PerformanceMonitor.prototype = {
+	recordFrameTime: function(dt_seconds) {
+		if(dt_seconds > 0) this.recordFPS(1 / dt_seconds);
+	}
+	,recordFPS: function(fps) {
+		if(fps < this.fpsIgnoreBounds[0] && fps > this.fpsIgnoreBounds[1]) return;
+		this.fpsSample.add(fps);
+		if(this.fpsSample.sampleCount < this.fpsSample.length) return;
+		if(this.fpsSample.average - this.fpsSample.get_standardDeviation() * .5 < this.lowerBoundFPS) {
+			this.framesTooLow++;
+			this.framesTooHigh = 0;
+			if(this.framesTooLow >= this.frameThreshold) {
+				this.fpsTooLowCallback((this.lowerBoundFPS - (this.fpsSample.average - this.fpsSample.get_standardDeviation() * .5)) / this.lowerBoundFPS);
+				this.fpsSample.clear();
+				this.framesTooLow = 0;
+			}
+		} else if(this.fpsSample.average > this.upperBoundFPS) {
+			this.framesTooHigh++;
+			this.framesTooLow = 0;
+			if(this.framesTooHigh >= this.frameThreshold) {
+				this.fpsTooHighCallback((this.fpsSample.average - this.upperBoundFPS) / this.upperBoundFPS);
+				this.fpsSample.clear();
+				this.framesTooHigh = 0;
+			}
+		} else {
+			this.framesTooLow = 0;
+			this.framesTooHigh = 0;
+		}
+	}
+	,get_fpsAverage: function() {
+		return this.fpsSample.average;
+	}
+	,get_fpsVariance: function() {
+		return this.fpsSample.get_variance();
+	}
+	,get_fpsStandardDeviation: function() {
+		return this.fpsSample.get_standardDeviation();
+	}
+	,__class__: PerformanceMonitor
+};
+var RollingSample = function(length) {
+	this.m2 = 0;
+	this.pos = 0;
+	this.sampleCount = 0;
+	this.standardDeviation = 0;
+	this.variance = 0;
+	this.average = 0;
+	var this1;
+	this1 = new Array(length);
+	this.samples = this1;
+};
+$hxClasses["RollingSample"] = RollingSample;
+RollingSample.__name__ = true;
+RollingSample.prototype = {
+	add: function(v) {
+		var delta;
+		if(this.sampleCount >= this.samples.length) {
+			var bottomValue = this.samples[this.pos];
+			delta = bottomValue - this.average;
+			this.average -= delta / (this.sampleCount - 1);
+			this.m2 -= delta * (bottomValue - this.average);
+		} else this.sampleCount++;
+		delta = v - this.average;
+		this.average += delta / this.sampleCount;
+		this.m2 += delta * (v - this.average);
+		this.samples[this.pos] = v;
+		this.pos++;
+		this.pos %= this.samples.length;
+		return this.pos;
+	}
+	,clear: function() {
+		var _g1 = 0;
+		var _g = this.samples.length;
+		while(_g1 < _g) {
+			var i = _g1++;
+			this.samples[i] = 0;
+		}
+		this.average = 0;
+		this.variance = 0;
+		this.standardDeviation = 0;
+		this.sampleCount = 0;
+		this.m2 = 0;
+	}
+	,get_variance: function() {
+		return this.m2 / (this.sampleCount - 1);
+	}
+	,get_standardDeviation: function() {
+		return Math.sqrt(this.get_variance());
+	}
+	,get_length: function() {
+		return this.samples.length;
+	}
+	,__class__: RollingSample
+};
 var Reflect = function() { };
 $hxClasses["Reflect"] = Reflect;
 Reflect.__name__ = true;
@@ -1658,17 +1782,128 @@ Type.createEnum = function(e,constr,params) {
 	if(params != null && params.length != 0) throw "Constructor " + constr + " does not need parameters";
 	return f;
 };
+Type.createEnumIndex = function(e,index,params) {
+	var c = e.__constructs__[index];
+	if(c == null) throw index + " is not a valid enum constructor index";
+	return Type.createEnum(e,c,params);
+};
 Type.getEnumConstructs = function(e) {
 	var a = e.__constructs__;
 	return a.slice();
+};
+Type.allEnums = function(e) {
+	return e.__empty_constructs__;
+};
+var browsermonitor = {};
+browsermonitor.BrowserMonitor = function(serverURL,app,recordConsoleOutput) {
+	if(recordConsoleOutput == null) recordConsoleOutput = false;
+	this.timeSamples = 0;
+	this.recordConsoleOutput = false;
+	this.userData = { };
+	this.mouseClicks = 0;
+	this.averageFrameTime = 0;
+	this.averageFPS = 0;
+	var _g = this;
+	this.serverURL = serverURL;
+	this.app = app;
+	this.recordConsoleOutput = recordConsoleOutput;
+	this.userAgent = window.navigator.userAgent;
+	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
+	this.windowWidth = window.innerWidth;
+	this.windowHeight = window.innerHeight;
+	lime.ui.MouseEventManager.onMouseUp.add(function(x,y,button) {
+		_g.mouseClicks++;
+	});
+	if(recordConsoleOutput) {
+		this.consoleLog = new Array();
+		this.consoleError = new Array();
+		this.consoleWarn = new Array();
+		(function() {
+			var oldLog = console.log;
+			var oldError = console.error;
+			var oldWarn = console.warn;
+			console.log = function(message) {
+				_g.consoleLog.push(message);
+				oldLog.apply(console,eval("arguments"));
+			};
+			console.error = function(message1) {
+				oldError.push(message1);
+				oldError.apply(console,eval("arguments"));
+			};
+			console.warn = function(message2) {
+				oldWarn.push(message2);
+				oldWarn.apply(console,eval("arguments"));
+			};
+		})();
+	}
+};
+$hxClasses["browsermonitor.BrowserMonitor"] = browsermonitor.BrowserMonitor;
+browsermonitor.BrowserMonitor.__name__ = true;
+browsermonitor.BrowserMonitor.prototype = {
+	sendReportAfterTime: function(seconds) {
+		haxe.Timer.delay($bind(this,this.sendReport),seconds * 1000);
+	}
+	,sendReport: function() {
+		if(this.serverURL == null) return;
+		var data = this.createReportJSON();
+		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 97, className : "browsermonitor.BrowserMonitor", methodName : "sendReport", customParams : [data]});
+		var request = new XMLHttpRequest();
+		request.open("POST",this.serverURL,true);
+		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
+		request.send(data);
+	}
+	,isSafari: function() {
+		return new EReg("Safari","i").match(this.browserName);
+	}
+	,isChrome: function() {
+		return new EReg("Chrome","i").match(this.browserName);
+	}
+	,isFirefox: function() {
+		return new EReg("Firefox","i").match(this.browserName);
+	}
+	,addDt: function(dt_ms) {
+		if(dt_ms > 8.3 && dt_ms < 200.) {
+			this.averageFrameTime = this.averageFrameTime / (1 + 1 / this.timeSamples) + dt_ms / (this.timeSamples + 1);
+			this.averageFPS = 1000 / this.averageFrameTime;
+			this.timeSamples++;
+		}
+	}
+	,createReportJSON: function() {
+		var json = { browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData};
+		if(this.recordConsoleOutput) json.console = { log : this.consoleLog, error : this.consoleError, warn : this.consoleWarn};
+		return JSON.stringify(json);
+	}
+	,__class__: browsermonitor.BrowserMonitor
 };
 var gltoolbox = {};
 gltoolbox.GeometryTools = function() { };
 $hxClasses["gltoolbox.GeometryTools"] = gltoolbox.GeometryTools;
 gltoolbox.GeometryTools.__name__ = true;
+gltoolbox.GeometryTools.getCachedTextureQuad = function(gl,drawMode) {
+	if(drawMode == null) drawMode = 5;
+	var textureQuad = gltoolbox.GeometryTools.textureQuadCache.get(drawMode);
+	if(textureQuad == null || !gl.isBuffer(textureQuad)) {
+		textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1,drawMode);
+		gltoolbox.GeometryTools.textureQuadCache.set(drawMode,textureQuad);
+	}
+	return textureQuad;
+};
+gltoolbox.GeometryTools.getCachedClipSpaceQuad = function(gl,drawMode) {
+	if(drawMode == null) drawMode = 5;
+	var clipSpaceQuad = gltoolbox.GeometryTools.clipSpaceQuadCache.get(drawMode);
+	if(clipSpaceQuad == null || !gl.isBuffer(clipSpaceQuad)) {
+		clipSpaceQuad = gltoolbox.GeometryTools.createQuad(gl,-1,-1,1,1,drawMode);
+		gltoolbox.GeometryTools.clipSpaceQuadCache.set(drawMode,clipSpaceQuad);
+	}
+	return clipSpaceQuad;
+};
+gltoolbox.GeometryTools.createTextureQuad = function(gl,drawMode) {
+	if(drawMode == null) drawMode = 5;
+	return gltoolbox.GeometryTools.createQuad(gl,0,0,1,1,drawMode);
+};
 gltoolbox.GeometryTools.createClipSpaceQuad = function(gl,drawMode) {
 	if(drawMode == null) drawMode = 5;
-	return gltoolbox.GeometryTools.createQuad(gl,-1,-1,1,1,drawMode,null);
+	return gltoolbox.GeometryTools.createQuad(gl,-1,-1,1,1,drawMode);
 };
 gltoolbox.GeometryTools.createQuad = function(gl,originX,originY,width,height,drawMode,usage) {
 	if(usage == null) usage = 35044;
@@ -1733,29 +1968,66 @@ gltoolbox.render.ITargetable.__name__ = true;
 gltoolbox.render.ITargetable.prototype = {
 	__class__: gltoolbox.render.ITargetable
 };
-gltoolbox.render.RenderTarget = function(gl,texture,width,height) {
+gltoolbox.render.RenderTarget = function(gl,textureFactory,width,height) {
 	this.gl = gl;
 	this.width = width;
 	this.height = height;
-	if(Reflect.isFunction(texture)) this.texture = texture(gl,width,height); else this.texture = texture;
+	this.textureFactory = textureFactory;
+	this.texture = textureFactory(gl,width,height);
+	if(gltoolbox.render.RenderTarget.textureQuad == null) gltoolbox.render.RenderTarget.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl,gl.TRIANGLE_STRIP);
 	this.frameBufferObject = gl.createFramebuffer();
-	gl.bindFramebuffer(gl.FRAMEBUFFER,this.frameBufferObject);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,this.texture,0);
-	this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
-	this.gl.clearColor(0,0,0,1);
-	this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+	this.resize(width,height);
 };
 $hxClasses["gltoolbox.render.RenderTarget"] = gltoolbox.render.RenderTarget;
 gltoolbox.render.RenderTarget.__name__ = true;
 gltoolbox.render.RenderTarget.__interfaces__ = [gltoolbox.render.ITargetable];
 gltoolbox.render.RenderTarget.prototype = {
-	activate: function() {
+	resize: function(width,height) {
+		var newTexture = this.textureFactory(this.gl,width,height);
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
+		this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER,this.gl.COLOR_ATTACHMENT0,this.gl.TEXTURE_2D,newTexture,0);
+		if(this.texture != null) {
+			var resampler = gltoolbox.shaders.Resample.instance;
+			resampler.texture.set_data(this.texture);
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
+			this.gl.viewport(0,0,width,height);
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER,gltoolbox.render.RenderTarget.textureQuad);
+			if(resampler.active) {
+				resampler.setUniforms();
+				resampler.setAttributes();
+				null;
+			} else {
+				if(!resampler.ready) resampler.create();
+				lime.graphics.opengl.GL.context.useProgram(resampler.prog);
+				resampler.setUniforms();
+				resampler.setAttributes();
+				resampler.active = true;
+			}
+			this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
+			resampler.deactivate();
+			this.gl.deleteTexture(this.texture);
+		} else {
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
+			this.gl.clearColor(0,0,0,1);
+			this.gl.clear(16384);
+		}
+		this.width = width;
+		this.height = height;
+		this.texture = newTexture;
+		return this;
+	}
+	,activate: function() {
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
 	}
-	,clear: function() {
+	,clear: function(mask) {
+		if(mask == null) mask = 16384;
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
 		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+		this.gl.clear(mask);
+	}
+	,dispose: function() {
+		this.gl.deleteFramebuffer(this.frameBufferObject);
+		this.gl.deleteTexture(this.texture);
 	}
 	,__class__: gltoolbox.render.RenderTarget
 };
@@ -1763,26 +2035,60 @@ gltoolbox.render.RenderTarget2Phase = function(gl,textureFactory,width,height) {
 	this.gl = gl;
 	this.width = width;
 	this.height = height;
-	this.writeToTexture = textureFactory(gl,width,height);
-	this.readFromTexture = textureFactory(gl,width,height);
+	this.textureFactory = textureFactory;
+	if(gltoolbox.render.RenderTarget2Phase.textureQuad == null) gltoolbox.render.RenderTarget2Phase.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl,gl.TRIANGLE_STRIP);
 	this.writeFrameBufferObject = gl.createFramebuffer();
 	this.readFrameBufferObject = gl.createFramebuffer();
-	gl.bindFramebuffer(gl.FRAMEBUFFER,this.writeFrameBufferObject);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,this.writeToTexture,0);
-	gl.bindFramebuffer(gl.FRAMEBUFFER,this.readFrameBufferObject);
-	gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,this.readFromTexture,0);
-	this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
-	this.gl.clearColor(0,0,0,1);
-	this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-	this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
-	this.gl.clearColor(0,0,0,1);
-	this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+	this.resize(width,height);
 };
 $hxClasses["gltoolbox.render.RenderTarget2Phase"] = gltoolbox.render.RenderTarget2Phase;
 gltoolbox.render.RenderTarget2Phase.__name__ = true;
 gltoolbox.render.RenderTarget2Phase.__interfaces__ = [gltoolbox.render.ITargetable];
 gltoolbox.render.RenderTarget2Phase.prototype = {
-	activate: function() {
+	resize: function(width,height) {
+		var newWriteToTexture = this.textureFactory(this.gl,width,height);
+		var newReadFromTexture = this.textureFactory(this.gl,width,height);
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
+		this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER,this.gl.COLOR_ATTACHMENT0,this.gl.TEXTURE_2D,newWriteToTexture,0);
+		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
+		this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER,this.gl.COLOR_ATTACHMENT0,this.gl.TEXTURE_2D,newReadFromTexture,0);
+		if(this.readFromTexture != null) {
+			var resampler = gltoolbox.shaders.Resample.instance;
+			resampler.texture.set_data(this.readFromTexture);
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
+			this.gl.viewport(0,0,width,height);
+			this.gl.bindBuffer(this.gl.ARRAY_BUFFER,gltoolbox.render.RenderTarget2Phase.textureQuad);
+			if(resampler.active) {
+				resampler.setUniforms();
+				resampler.setAttributes();
+				null;
+			} else {
+				if(!resampler.ready) resampler.create();
+				lime.graphics.opengl.GL.context.useProgram(resampler.prog);
+				resampler.setUniforms();
+				resampler.setAttributes();
+				resampler.active = true;
+			}
+			this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
+			resampler.deactivate();
+			this.gl.deleteTexture(this.readFromTexture);
+		} else {
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
+			this.gl.clearColor(0,0,0,1);
+			this.gl.clear(16384);
+		}
+		if(this.writeToTexture != null) this.gl.deleteTexture(this.writeToTexture); else {
+			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
+			this.gl.clearColor(0,0,0,1);
+			this.gl.clear(16384);
+		}
+		this.width = width;
+		this.height = height;
+		this.writeToTexture = newWriteToTexture;
+		this.readFromTexture = newReadFromTexture;
+		return this;
+	}
+	,activate: function() {
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
 	}
 	,swap: function() {
@@ -1793,26 +2099,197 @@ gltoolbox.render.RenderTarget2Phase.prototype = {
 		this.writeToTexture = this.readFromTexture;
 		this.readFromTexture = this.tmpTex;
 	}
-	,clear: function() {
+	,clear: function(mask) {
+		if(mask == null) mask = 16384;
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
 		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+		this.gl.clear(mask);
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
 		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+		this.gl.clear(mask);
 	}
-	,clearRead: function() {
+	,clearRead: function(mask) {
+		if(mask == null) mask = 16384;
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
 		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+		this.gl.clear(mask);
 	}
-	,clearWrite: function() {
+	,clearWrite: function(mask) {
+		if(mask == null) mask = 16384;
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
 		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+		this.gl.clear(mask);
+	}
+	,dispose: function() {
+		this.gl.deleteFramebuffer(this.writeFrameBufferObject);
+		this.gl.deleteFramebuffer(this.readFrameBufferObject);
+		this.gl.deleteTexture(this.writeToTexture);
+		this.gl.deleteTexture(this.readFromTexture);
 	}
 	,__class__: gltoolbox.render.RenderTarget2Phase
 };
+var js = {};
+js.Boot = function() { };
+$hxClasses["js.Boot"] = js.Boot;
+js.Boot.__name__ = true;
+js.Boot.__unhtml = function(s) {
+	return s.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
+};
+js.Boot.__trace = function(v,i) {
+	var msg;
+	if(i != null) msg = i.fileName + ":" + i.lineNumber + ": "; else msg = "";
+	msg += js.Boot.__string_rec(v,"");
+	if(i != null && i.customParams != null) {
+		var _g = 0;
+		var _g1 = i.customParams;
+		while(_g < _g1.length) {
+			var v1 = _g1[_g];
+			++_g;
+			msg += "," + js.Boot.__string_rec(v1,"");
+		}
+	}
+	var d;
+	if(typeof(document) != "undefined" && (d = document.getElementById("haxe:trace")) != null) d.innerHTML += js.Boot.__unhtml(msg) + "<br/>"; else if(typeof console != "undefined" && console.log != null) console.log(msg);
+};
+js.Boot.getClass = function(o) {
+	if((o instanceof Array) && o.__enum__ == null) return Array; else return o.__class__;
+};
+js.Boot.__string_rec = function(o,s) {
+	if(o == null) return "null";
+	if(s.length >= 5) return "<...>";
+	var t = typeof(o);
+	if(t == "function" && (o.__name__ || o.__ename__)) t = "object";
+	switch(t) {
+	case "object":
+		if(o instanceof Array) {
+			if(o.__enum__) {
+				if(o.length == 2) return o[0];
+				var str = o[0] + "(";
+				s += "\t";
+				var _g1 = 2;
+				var _g = o.length;
+				while(_g1 < _g) {
+					var i = _g1++;
+					if(i != 2) str += "," + js.Boot.__string_rec(o[i],s); else str += js.Boot.__string_rec(o[i],s);
+				}
+				return str + ")";
+			}
+			var l = o.length;
+			var i1;
+			var str1 = "[";
+			s += "\t";
+			var _g2 = 0;
+			while(_g2 < l) {
+				var i2 = _g2++;
+				str1 += (i2 > 0?",":"") + js.Boot.__string_rec(o[i2],s);
+			}
+			str1 += "]";
+			return str1;
+		}
+		var tostr;
+		try {
+			tostr = o.toString;
+		} catch( e ) {
+			return "???";
+		}
+		if(tostr != null && tostr != Object.toString) {
+			var s2 = o.toString();
+			if(s2 != "[object Object]") return s2;
+		}
+		var k = null;
+		var str2 = "{\n";
+		s += "\t";
+		var hasp = o.hasOwnProperty != null;
+		for( var k in o ) {
+		if(hasp && !o.hasOwnProperty(k)) {
+			continue;
+		}
+		if(k == "prototype" || k == "__class__" || k == "__super__" || k == "__interfaces__" || k == "__properties__") {
+			continue;
+		}
+		if(str2.length != 2) str2 += ", \n";
+		str2 += s + k + " : " + js.Boot.__string_rec(o[k],s);
+		}
+		s = s.substring(1);
+		str2 += "\n" + s + "}";
+		return str2;
+	case "function":
+		return "<function>";
+	case "string":
+		return o;
+	default:
+		return String(o);
+	}
+};
+js.Boot.__interfLoop = function(cc,cl) {
+	if(cc == null) return false;
+	if(cc == cl) return true;
+	var intf = cc.__interfaces__;
+	if(intf != null) {
+		var _g1 = 0;
+		var _g = intf.length;
+		while(_g1 < _g) {
+			var i = _g1++;
+			var i1 = intf[i];
+			if(i1 == cl || js.Boot.__interfLoop(i1,cl)) return true;
+		}
+	}
+	return js.Boot.__interfLoop(cc.__super__,cl);
+};
+js.Boot.__instanceof = function(o,cl) {
+	if(cl == null) return false;
+	switch(cl) {
+	case Int:
+		return (o|0) === o;
+	case Float:
+		return typeof(o) == "number";
+	case Bool:
+		return typeof(o) == "boolean";
+	case String:
+		return typeof(o) == "string";
+	case Array:
+		return (o instanceof Array) && o.__enum__ == null;
+	case Dynamic:
+		return true;
+	default:
+		if(o != null) {
+			if(typeof(cl) == "function") {
+				if(o instanceof cl) return true;
+				if(js.Boot.__interfLoop(js.Boot.getClass(o),cl)) return true;
+			}
+		} else return false;
+		if(cl == Class && o.__name__ != null) return true;
+		if(cl == Enum && o.__ename__ != null) return true;
+		return o.__enum__ == cl;
+	}
+};
+js.Boot.__cast = function(o,t) {
+	if(js.Boot.__instanceof(o,t)) return o; else throw "Cannot cast " + Std.string(o) + " to " + Std.string(t);
+};
+gltoolbox.shaders = {};
+gltoolbox.shaders.Resample = function() {
+	shaderblox.ShaderBase.call(this);
+};
+$hxClasses["gltoolbox.shaders.Resample"] = gltoolbox.shaders.Resample;
+gltoolbox.shaders.Resample.__name__ = true;
+gltoolbox.shaders.Resample.__super__ = shaderblox.ShaderBase;
+gltoolbox.shaders.Resample.prototype = $extend(shaderblox.ShaderBase.prototype,{
+	create: function() {
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - 1.0, 0.0, 1.0 );\n\t}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sampler2D texture;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\tgl_FragColor = texture2D(texture, texelCoord);\n\t}\n");
+		this.ready = true;
+	}
+	,createProperties: function() {
+		shaderblox.ShaderBase.prototype.createProperties.call(this);
+		var instance = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UTexture"),["texture",-1,false]);
+		this.texture = instance;
+		this.uniforms.push(instance);
+		var instance1 = Type.createInstance(Type.resolveClass("shaderblox.attributes.FloatAttribute"),["vertexPosition",0,2]);
+		this.vertexPosition = instance1;
+		this.attributes.push(instance1);
+		this.aStride += 8;
+	}
+	,__class__: gltoolbox.shaders.Resample
+});
 var haxe = {};
 haxe.Log = function() { };
 $hxClasses["haxe.Log"] = haxe.Log;
@@ -2169,6 +2646,9 @@ haxe.ds.IntMap.prototype = {
 	set: function(key,value) {
 		this.h[key] = value;
 	}
+	,get: function(key) {
+		return this.h[key];
+	}
 	,__class__: haxe.ds.IntMap
 };
 haxe.ds.ObjectMap = function() {
@@ -2323,144 +2803,7 @@ haxe.io.Error.OutsideBounds = ["OutsideBounds",2];
 haxe.io.Error.OutsideBounds.toString = $estr;
 haxe.io.Error.OutsideBounds.__enum__ = haxe.io.Error;
 haxe.io.Error.Custom = function(e) { var $x = ["Custom",3,e]; $x.__enum__ = haxe.io.Error; $x.toString = $estr; return $x; };
-var js = {};
-js.Boot = function() { };
-$hxClasses["js.Boot"] = js.Boot;
-js.Boot.__name__ = true;
-js.Boot.__unhtml = function(s) {
-	return s.split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;");
-};
-js.Boot.__trace = function(v,i) {
-	var msg;
-	if(i != null) msg = i.fileName + ":" + i.lineNumber + ": "; else msg = "";
-	msg += js.Boot.__string_rec(v,"");
-	if(i != null && i.customParams != null) {
-		var _g = 0;
-		var _g1 = i.customParams;
-		while(_g < _g1.length) {
-			var v1 = _g1[_g];
-			++_g;
-			msg += "," + js.Boot.__string_rec(v1,"");
-		}
-	}
-	var d;
-	if(typeof(document) != "undefined" && (d = document.getElementById("haxe:trace")) != null) d.innerHTML += js.Boot.__unhtml(msg) + "<br/>"; else if(typeof console != "undefined" && console.log != null) console.log(msg);
-};
-js.Boot.getClass = function(o) {
-	if((o instanceof Array) && o.__enum__ == null) return Array; else return o.__class__;
-};
-js.Boot.__string_rec = function(o,s) {
-	if(o == null) return "null";
-	if(s.length >= 5) return "<...>";
-	var t = typeof(o);
-	if(t == "function" && (o.__name__ || o.__ename__)) t = "object";
-	switch(t) {
-	case "object":
-		if(o instanceof Array) {
-			if(o.__enum__) {
-				if(o.length == 2) return o[0];
-				var str = o[0] + "(";
-				s += "\t";
-				var _g1 = 2;
-				var _g = o.length;
-				while(_g1 < _g) {
-					var i = _g1++;
-					if(i != 2) str += "," + js.Boot.__string_rec(o[i],s); else str += js.Boot.__string_rec(o[i],s);
-				}
-				return str + ")";
-			}
-			var l = o.length;
-			var i1;
-			var str1 = "[";
-			s += "\t";
-			var _g2 = 0;
-			while(_g2 < l) {
-				var i2 = _g2++;
-				str1 += (i2 > 0?",":"") + js.Boot.__string_rec(o[i2],s);
-			}
-			str1 += "]";
-			return str1;
-		}
-		var tostr;
-		try {
-			tostr = o.toString;
-		} catch( e ) {
-			return "???";
-		}
-		if(tostr != null && tostr != Object.toString) {
-			var s2 = o.toString();
-			if(s2 != "[object Object]") return s2;
-		}
-		var k = null;
-		var str2 = "{\n";
-		s += "\t";
-		var hasp = o.hasOwnProperty != null;
-		for( var k in o ) {
-		if(hasp && !o.hasOwnProperty(k)) {
-			continue;
-		}
-		if(k == "prototype" || k == "__class__" || k == "__super__" || k == "__interfaces__" || k == "__properties__") {
-			continue;
-		}
-		if(str2.length != 2) str2 += ", \n";
-		str2 += s + k + " : " + js.Boot.__string_rec(o[k],s);
-		}
-		s = s.substring(1);
-		str2 += "\n" + s + "}";
-		return str2;
-	case "function":
-		return "<function>";
-	case "string":
-		return o;
-	default:
-		return String(o);
-	}
-};
-js.Boot.__interfLoop = function(cc,cl) {
-	if(cc == null) return false;
-	if(cc == cl) return true;
-	var intf = cc.__interfaces__;
-	if(intf != null) {
-		var _g1 = 0;
-		var _g = intf.length;
-		while(_g1 < _g) {
-			var i = _g1++;
-			var i1 = intf[i];
-			if(i1 == cl || js.Boot.__interfLoop(i1,cl)) return true;
-		}
-	}
-	return js.Boot.__interfLoop(cc.__super__,cl);
-};
-js.Boot.__instanceof = function(o,cl) {
-	if(cl == null) return false;
-	switch(cl) {
-	case Int:
-		return (o|0) === o;
-	case Float:
-		return typeof(o) == "number";
-	case Bool:
-		return typeof(o) == "boolean";
-	case String:
-		return typeof(o) == "string";
-	case Array:
-		return (o instanceof Array) && o.__enum__ == null;
-	case Dynamic:
-		return true;
-	default:
-		if(o != null) {
-			if(typeof(cl) == "function") {
-				if(o instanceof cl) return true;
-				if(js.Boot.__interfLoop(js.Boot.getClass(o),cl)) return true;
-			}
-		} else return false;
-		if(cl == Class && o.__name__ != null) return true;
-		if(cl == Enum && o.__ename__ != null) return true;
-		return o.__enum__ == cl;
-	}
-};
-js.Boot.__cast = function(o,t) {
-	if(js.Boot.__instanceof(o,t)) return o; else throw "Cannot cast " + Std.string(o) + " to " + Std.string(t);
-};
+haxe.io.Error.__empty_constructs__ = [haxe.io.Error.Blocked,haxe.io.Error.Overflow,haxe.io.Error.OutsideBounds];
 js.Lib = function() { };
 $hxClasses["js.Lib"] = js.Lib;
 js.Lib.__name__ = true;
@@ -3330,6 +3673,7 @@ lime.audio.AudioContext.HTML5 = function(context) { var $x = ["HTML5",1,context]
 lime.audio.AudioContext.WEB = function(context) { var $x = ["WEB",2,context]; $x.__enum__ = lime.audio.AudioContext; $x.toString = $estr; return $x; };
 lime.audio.AudioContext.FLASH = function(context) { var $x = ["FLASH",3,context]; $x.__enum__ = lime.audio.AudioContext; $x.toString = $estr; return $x; };
 lime.audio.AudioContext.CUSTOM = function(data) { var $x = ["CUSTOM",4,data]; $x.__enum__ = lime.audio.AudioContext; $x.toString = $estr; return $x; };
+lime.audio.AudioContext.__empty_constructs__ = [];
 lime.audio.AudioManager = function() { };
 $hxClasses["lime.audio.AudioManager"] = lime.audio.AudioManager;
 lime.audio.AudioManager.__name__ = true;
@@ -4563,6 +4907,7 @@ lime.graphics.ImageChannel.BLUE.__enum__ = lime.graphics.ImageChannel;
 lime.graphics.ImageChannel.ALPHA = ["ALPHA",3];
 lime.graphics.ImageChannel.ALPHA.toString = $estr;
 lime.graphics.ImageChannel.ALPHA.__enum__ = lime.graphics.ImageChannel;
+lime.graphics.ImageChannel.__empty_constructs__ = [lime.graphics.ImageChannel.RED,lime.graphics.ImageChannel.GREEN,lime.graphics.ImageChannel.BLUE,lime.graphics.ImageChannel.ALPHA];
 lime.graphics.ImageBuffer = function(data,width,height,bitsPerPixel) {
 	if(bitsPerPixel == null) bitsPerPixel = 4;
 	if(height == null) height = 0;
@@ -4609,12 +4954,14 @@ lime.graphics.ImageType.FLASH.__enum__ = lime.graphics.ImageType;
 lime.graphics.ImageType.CUSTOM = ["CUSTOM",3];
 lime.graphics.ImageType.CUSTOM.toString = $estr;
 lime.graphics.ImageType.CUSTOM.__enum__ = lime.graphics.ImageType;
+lime.graphics.ImageType.__empty_constructs__ = [lime.graphics.ImageType.CANVAS,lime.graphics.ImageType.DATA,lime.graphics.ImageType.FLASH,lime.graphics.ImageType.CUSTOM];
 lime.graphics.RenderContext = $hxClasses["lime.graphics.RenderContext"] = { __ename__ : true, __constructs__ : ["OPENGL","CANVAS","DOM","FLASH","CUSTOM"] };
 lime.graphics.RenderContext.OPENGL = function(gl) { var $x = ["OPENGL",0,gl]; $x.__enum__ = lime.graphics.RenderContext; $x.toString = $estr; return $x; };
 lime.graphics.RenderContext.CANVAS = function(context) { var $x = ["CANVAS",1,context]; $x.__enum__ = lime.graphics.RenderContext; $x.toString = $estr; return $x; };
 lime.graphics.RenderContext.DOM = function(element) { var $x = ["DOM",2,element]; $x.__enum__ = lime.graphics.RenderContext; $x.toString = $estr; return $x; };
 lime.graphics.RenderContext.FLASH = function(stage) { var $x = ["FLASH",3,stage]; $x.__enum__ = lime.graphics.RenderContext; $x.toString = $estr; return $x; };
 lime.graphics.RenderContext.CUSTOM = function(data) { var $x = ["CUSTOM",4,data]; $x.__enum__ = lime.graphics.RenderContext; $x.toString = $estr; return $x; };
+lime.graphics.RenderContext.__empty_constructs__ = [];
 lime.graphics._Renderer = {};
 lime.graphics._Renderer.RenderEventInfo = function(type,context) {
 	this.type = type;
@@ -6655,6 +7002,7 @@ lime.net.URLLoaderDataFormat.TEXT.__enum__ = lime.net.URLLoaderDataFormat;
 lime.net.URLLoaderDataFormat.VARIABLES = ["VARIABLES",2];
 lime.net.URLLoaderDataFormat.VARIABLES.toString = $estr;
 lime.net.URLLoaderDataFormat.VARIABLES.__enum__ = lime.net.URLLoaderDataFormat;
+lime.net.URLLoaderDataFormat.__empty_constructs__ = [lime.net.URLLoaderDataFormat.BINARY,lime.net.URLLoaderDataFormat.TEXT,lime.net.URLLoaderDataFormat.VARIABLES];
 lime.net.URLRequest = function(inURL) {
 	if(inURL != null) this.url = inURL;
 	this.requestHeaders = [];
@@ -8031,6 +8379,9 @@ while(_g11 < _g2) {
 }
 lime.app.Application.onUpdate = new lime.app.Event();
 lime.app.Application.__eventInfo = new lime.app._Application.UpdateEventInfo();
+gltoolbox.GeometryTools.textureQuadCache = new haxe.ds.IntMap();
+gltoolbox.GeometryTools.clipSpaceQuadCache = new haxe.ds.IntMap();
+gltoolbox.shaders.Resample.instance = new gltoolbox.shaders.Resample();
 haxe.Unserializer.DEFAULT_RESOLVER = Type;
 haxe.Unserializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";
 haxe.ds.ObjectMap.count = 0;
