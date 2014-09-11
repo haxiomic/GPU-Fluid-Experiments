@@ -20,5 +20,5 @@ TODO:
 
 BUGS in Other Things:
 	- Chrome, if missing OES_texture_float_linear, chrome errors incorrectly missing OES_float_linear
-	- Haxe bool != operator does not invert
 	- Haxe Map.set should return the item set
+	- haxe.Timer.delay not working on c++?

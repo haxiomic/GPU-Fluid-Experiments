@@ -12,11 +12,23 @@ import lime.ui.KeyCode;
 import lime.utils.Float32Array;
 import shaderblox.ShaderBase;
 
+enum SimulationQuality{
+	UltraHigh;
+	High;
+	Medium;
+	Low;
+	UltraLow;
+}
+
 class Main extends Application {
 	var gl:GLRenderContext;
 	//Simulations
 	var fluid:GPUFluid;
 	var particles:GPUParticles;
+
+	var particleCount:Int;
+	var fluidScale:Float;
+	var fluidIterations:Int;
 	//Geometry
 	var textureQuad:GLBuffer = null; 
 	//Framebuffers
@@ -36,7 +48,6 @@ class Main extends Application {
 	var mouseClipSpace = new Vector2();
 	var lastMouse = new Vector2();
 	var lastMouseClipSpace = new Vector2();
-
 	var time:Float;
 	var lastTime:Float;
 
@@ -51,21 +62,17 @@ class Main extends Application {
 	public function new () {
 		super();
 
-		performanceMonitor = new PerformanceMonitor(30, 70, 10);
+		performanceMonitor = new PerformanceMonitor(50, 70);
 
 		#if js
 		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
 		// browserMonitor.sendReportAfterTime(8);
 		#end
-
-		haxe.Timer.delay(function(){
-			// particles.setCount(Math.round(particles.count*.5));
-			// var scaleFactor = 1/6;
-			// fluid.resize(Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor));
-		}, 4 * 1000 );
 	}
 
 	public override function init (context:RenderContext):Void {
+		setSimulationQuality(Medium);
+
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
@@ -99,17 +106,8 @@ class Main extends Application {
 				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
 				mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
 
-				var scaleFactor = 1/4;
-				var fluidIterations = 20;
-				var fluidScale = 32;
-				var particleCount = 1 << 17;
-
-				#if js
-					scaleFactor = 1/4;
-					fluidIterations = 18;
-				#end
-				
-				fluid = new GPUFluid(gl, Math.round(window.width*scaleFactor), Math.round(window.height*scaleFactor), fluidScale, fluidIterations);
+				var cellScale = 32;
+				fluid = new GPUFluid(gl, Math.round(window.width*fluidScale), Math.round(window.height*fluidScale), cellScale, fluidIterations);
 				fluid.updateDyeShader = updateDyeShader;
 				fluid.applyForcesShader = mouseForceShader;
 
@@ -123,15 +121,13 @@ class Main extends Application {
 				browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
 				browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
 				//record settings
-				browserMonitor.userData.scaleFactor = scaleFactor;
+				browserMonitor.userData.fluidScale = fluidScale;
 				browserMonitor.userData.fluidIterations = fluidIterations;
 				browserMonitor.userData.fluidScale = fluidScale;
 				browserMonitor.userData.particleCount = particleCount;
 				//check and halt Safari browser
-				if(browserMonitor.isSafari()){
+				if(browserMonitor.isSafari())
 					js.Lib.alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this demo only works in Chrome and Firefox");
-					return;
-				}
 				#end
 			default:
 				#if js
@@ -147,6 +143,8 @@ class Main extends Application {
 		time = haxe.Timer.stamp();
 		var dt = time - lastTime; //60fps ~ 0.016
 		lastTime = time;
+
+		performanceMonitor.recordFrameTime(dt);
 
 		//update mouse velocity
 		if(lastMousePointKnown){
@@ -217,6 +215,37 @@ class Main extends Application {
 		renderParticlesShader.deactivate();
 	}
 
+	inline function setSimulationQuality(quality:SimulationQuality){
+		switch (quality) {
+			case UltraHigh:
+				particleCount = 1 << 20;
+				fluidScale = 1/2;
+				fluidIterations = 30;
+			case High:
+				particleCount = 1 << 20;
+				fluidScale = 1/4;
+				fluidIterations = 18;
+			case Medium:
+				particleCount = 1 << 18;
+				fluidScale = 1/4;
+				fluidIterations = 16;
+			case Low:
+				particleCount = 1 << 16;
+				fluidScale = 1/5;
+				fluidIterations = 14;
+			case UltraLow:
+				particleCount = 1 << 14;
+				fluidScale = 1/6;
+				fluidIterations = 12;
+		}
+	}
+
+	inline function updateSimulationQuality(){
+		fluid.resize(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale));
+		fluid.solverIterations = fluidIterations;
+		particles.setCount(particleCount);
+	}
+
 	function reset():Void{
 		particles.reset();	
 	}
@@ -256,7 +285,7 @@ class Main extends Application {
 				reset();
 			case KeyCode.P:
 				renderParticlesEnabled = !renderParticlesEnabled;
-			case KeyCode.F:
+			case KeyCode.D:
 				renderFluidEnabled = !renderFluidEnabled;
 		}
 	}
@@ -344,9 +373,9 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float taperFactor = 0.6;//1 => 0 at lastMouse, 0 => no tapering
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
 
-			float R = 0.02;
+			float R = 0.015;
 			float m = exp(-l/R); //drag coefficient
-			m *= m * projectedFraction * projectedFraction;
+			m *= projectedFraction * projectedFraction;
 
 			vec2 tv = mouseVelocity;
 			// float maxSpeed = 10.04 * dx / dt;
