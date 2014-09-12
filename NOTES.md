@@ -1,8 +1,10 @@
 NOTES:
 	- Texture lookups outside function void main() are not standard - this caused issues on many GPUs!
 
-
 TODO:
+	- Shaderblox: Precision
+				  Defines
+				  Super functions
 	- fix memory leak issue in html -> does one exist?
 		!! Theory: when the particles pile up, fewer gpu cores are used to render, since particles require a texture lookup, the same core running many lookups becomes slow!
 			-> Firefox handles this much better than chrome?
@@ -13,10 +15,9 @@ TODO:
 		what on earth?
 		-> seems to get worse when particles are on top of one another ?
 			=> depth testing?
-	- handle resize
 	- need fallback for interpolation when OES_texture_float_linear is not supported (simply bilerp in relevant shaders controlled by glsl define)
 	- fallback to power of two textures in fluid for speed / compatibility in gltoolbox
-	- Fluid shouldn't really manage the dye
+	- fluid shouldn't really manage the dye, nor should particles manage advection
 
 - Reading rigid body force data back to CPU with gl.readpixels:
 	- [http://concord-consortium.github.io/lab/experiments/webgl-gpgpu/webgl.html]()
