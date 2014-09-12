@@ -55,6 +55,8 @@ class Main extends Application {
 	var renderParticlesEnabled:Bool = true;
 	var renderFluidEnabled:Bool = true;
 
+	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
+
 	var performanceMonitor:PerformanceMonitor;
 	#if js
 	var browserMonitor:BrowserMonitor;
@@ -158,10 +160,13 @@ class Main extends Application {
 		if(renderParticlesEnabled) particles.step(dt);
 
 		//render to offScreen
-		gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, offScreenTarget.frameBufferObject);
-		// gl.viewport (0, 0, window.width, window.height);
-		// gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+		if(OFFSCREEN_RENDER){
+			gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, offScreenTarget.frameBufferObject);
+		}else{
+			gl.viewport (0, 0, window.width, window.height);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+		}
 
 		gl.clearColor(0,0,0,1);
 		gl.clear(gl.COLOR_BUFFER_BIT);
@@ -177,9 +182,11 @@ class Main extends Application {
 		gl.disable(gl.BLEND);
 
 		//render offScreen texture to screen
-		gl.viewport (0, 0, window.width, window.height);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
-		renderTexture(offScreenTarget.texture);
+		if(OFFSCREEN_RENDER){
+			gl.viewport (0, 0, window.width, window.height);
+			gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+			renderTexture(offScreenTarget.texture);
+		}
 
 		updateLastMouse();
 	}
