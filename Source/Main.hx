@@ -127,9 +127,6 @@ class Main extends Application {
 				browserMonitor.userData.fluidIterations = fluidIterations;
 				browserMonitor.userData.fluidScale = fluidScale;
 				browserMonitor.userData.particleCount = particleCount;
-				//check and halt Safari browser
-				if(browserMonitor.isSafari())
-					js.Lib.alert("There's a bug with Safari's GLSL compiler, until I can track down what triggers it, this demo only works in Chrome and Firefox");
 				#end
 			default:
 				#if js
