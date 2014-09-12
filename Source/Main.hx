@@ -63,17 +63,17 @@ class Main extends Application {
 	public function new () {
 		super();
 
-		performanceMonitor = new PerformanceMonitor(40);
+		performanceMonitor = new PerformanceMonitor(30);
 		performanceMonitor.fpsTooLowCallback = lowerQualityRequired;
 
 		#if js
 		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
-		// browserMonitor.sendReportAfterTime(8);
+		browserMonitor.sendReportAfterTime(8);
 		#end
 	}
 
 	public override function init (context:RenderContext):Void {
-		simulationQuality = Low;
+		simulationQuality = Medium;
 
 		switch (context) {
 			case OPENGL (gl):
