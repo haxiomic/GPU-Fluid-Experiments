@@ -63,7 +63,7 @@ class Main extends Application {
 	public function new () {
 		super();
 
-		performanceMonitor = new PerformanceMonitor(45);
+		performanceMonitor = new PerformanceMonitor(40);
 		performanceMonitor.fpsTooLowCallback = lowerQualityRequired;
 
 		#if js
@@ -73,7 +73,7 @@ class Main extends Application {
 	}
 
 	public override function init (context:RenderContext):Void {
-		simulationQuality = High;
+		simulationQuality = Low;
 
 		switch (context) {
 			case OPENGL (gl):
@@ -343,10 +343,10 @@ class ScreenTexture extends ShaderBase {}
 
 @:vert('
 	void main(){
-		set();
-
-		//generate color
-		vec2 v = texture2D(particleData, particleUV).ba;
+		vec2 p = texture2D(particleData, particleUV).xy;
+		vec2 v = texture2D(particleData, particleUV).zw;
+		gl_PointSize = 1.0;
+		gl_Position = vec4(p, 0.0, 1.0);
 
 		float speed = length(v);
 		float x = clamp(speed * 4.0, 0., 1.);
@@ -367,6 +367,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 	uniform vec2 lastMouseClipSpace;
 
 	void main(){
+		vec4 color = texture2D(dye, texelCoord);
 		color.r *= (0.9797);
 		color.g *= (0.9494);
 		color.b *= (0.9696);
@@ -405,6 +406,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 	uniform vec2 lastMouseClipSpace;
 
 	void main(){
+		vec2 v = texture2D(velocity, texelCoord).xy;
 		v.xy *= 0.999;
 
 		if(isMouseDown){

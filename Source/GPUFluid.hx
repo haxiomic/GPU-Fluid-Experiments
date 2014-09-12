@@ -234,12 +234,6 @@ class PressureGradientSubstract extends FluidBase{}
 
 	varying vec2 texelCoord;
 	varying vec2 p;
-
-	vec2 v = texture2D(velocity, texelCoord).xy;
-
-	void main(){
-		gl_FragColor = vec4(v, 0, 0);
-	}
 ')
 class ApplyForces extends FluidBase{}
 
@@ -250,11 +244,5 @@ class ApplyForces extends FluidBase{}
 
 	varying vec2 texelCoord;
 	varying vec2 p;
-
-	vec4 color = texture2D(dye, texelCoord);
-
-	void main(){
-		gl_FragColor = color;
-	}
 ')
 class UpdateDye extends FluidBase{}

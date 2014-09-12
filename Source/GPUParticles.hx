@@ -158,9 +158,6 @@ class InitialConditions extends PlaneTexture{}
 @:frag('
 	uniform float dt;
 	uniform sampler2D particleData;
-
-	vec2 p = texture2D(particleData, texelCoord).xy;
-	vec2 v = texture2D(particleData, texelCoord).zw;
 ')
 class ParticleBase extends PlaneTexture{}
 
@@ -171,6 +168,9 @@ class ParticleBase extends PlaneTexture{}
 	uniform sampler2D flowVelocityField;
 
 	void main(){
+		vec2 p = texture2D(particleData, texelCoord).xy;
+		vec2 v = texture2D(particleData, texelCoord).zw;
+
 		if(flowEnabled){
 			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;//(converts clip-space p to texel coordinates)
 			v += (vf - v) * dragCoefficient;
@@ -186,17 +186,12 @@ class StepParticles extends ParticleBase{}
 	uniform sampler2D particleData;
 	attribute vec2 particleUV;
 	varying vec4 color;
-
-	vec2 p = texture2D(particleData, particleUV).xy;
-	vec2 v = texture2D(particleData, particleUV).zw;
 	
-	void set(){
+	void main(){
+		vec2 p = texture2D(particleData, particleUV).xy;
+		vec2 v = texture2D(particleData, particleUV).zw;
 		gl_PointSize = 1.0;
 		gl_Position = vec4(p, 0.0, 1.0);
-	}
-
-	void main(){
-		set();
 
 		color = vec4(1.0, 1.0, 1.0, 1.0);
 	}
