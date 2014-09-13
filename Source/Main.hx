@@ -94,7 +94,7 @@ class Main extends Application {
 
 		browserMonitor.onSendCallback = function(report:Dynamic){
 			//Add to report
-			Reflect.setField(report, 'averageFPS', Math.round(performanceMonitor.fpsAverage * 10)/10;
+			Reflect.setField(report, 'averageFPS', Math.round(performanceMonitor.fpsAverage * 10)/10);
 			//simulations parameters
 			browserMonitor.userData.particleCount = particleCount;
 			browserMonitor.userData.fluidScale = fluidScale;
