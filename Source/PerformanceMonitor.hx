@@ -12,8 +12,8 @@ class PerformanceMonitor{
 
 	public var fpsIgnoreBounds:Array<Float> = [5, 180]; 
 
-	public var fpsTooLowCallback:Float->Void = function(v:Float){};
-	public var fpsTooHighCallback:Float->Void = function(v:Float){};
+	public var fpsTooLowCallback:Float->Void = null;
+	public var fpsTooHighCallback:Float->Void = null;
 
 	var fpsSample:RollingSample;
 
@@ -36,11 +36,10 @@ class PerformanceMonitor{
 		//check if sample is completed
 		if(fpsSample.sampleCount < fpsSample.length) return;
 
-
 		if((fpsSample.average - fpsSample.standardDeviation * .5) < lowerBoundFPS){
 			framesTooLow++;
 			framesTooHigh = 0;
-			if(framesTooLow >= frameThreshold){
+			if(framesTooLow >= frameThreshold && fpsTooLowCallback != null){
 				fpsTooLowCallback((lowerBoundFPS - (fpsSample.average - fpsSample.standardDeviation * .5)) / lowerBoundFPS);
 				fpsSample.clear();
 				framesTooLow = 0;
@@ -48,8 +47,7 @@ class PerformanceMonitor{
 		}else if(fpsSample.average > upperBoundFPS){
 			framesTooHigh++;
 			framesTooLow = 0;
-
-			if(framesTooHigh >= frameThreshold){
+			if(framesTooHigh >= frameThreshold && fpsTooHighCallback != null){
 				fpsTooHighCallback((fpsSample.average - upperBoundFPS) / upperBoundFPS);
 				fpsSample.clear();
 				framesTooHigh = 0;

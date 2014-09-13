@@ -25,11 +25,6 @@ class Main extends Application {
 	//Simulations
 	var fluid:GPUFluid;
 	var particles:GPUParticles;
-
-	var particleCount:Int;
-	var fluidScale:Float;
-	var fluidIterations:Int;
-	var simulationQuality(default, set):SimulationQuality;
 	//Geometry
 	var textureQuad:GLBuffer = null; 
 	//Framebuffers
@@ -51,16 +46,22 @@ class Main extends Application {
 	var lastMouseClipSpace = new Vector2();
 	var time:Float;
 	var lastTime:Float;
-
+	//Drawing
 	var renderParticlesEnabled:Bool = true;
 	var renderFluidEnabled:Bool = true;
-
-	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
-
+	//
 	var performanceMonitor:PerformanceMonitor;
 	#if js
-	var browserMonitor:BrowserMonitor;
+	var browserMonitor:BrowserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', false);
 	#end
+	//Parameters
+	var particleCount:Int;
+	var fluidScale:Float;
+	var fluidIterations:Int;
+	var offScreenScale:Float;
+	var simulationQuality(default, set):SimulationQuality;
+
+	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
 	
 	public function new () {
 		super();
@@ -68,14 +69,50 @@ class Main extends Application {
 		performanceMonitor = new PerformanceMonitor(30);
 		performanceMonitor.fpsTooLowCallback = lowerQualityRequired;
 
+		simulationQuality = Medium;
+
 		#if js
-		browserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', this, false);
-		browserMonitor.sendReportAfterTime(8);
+		browserMonitor.sendReportAfterTime(8, function(report:Dynamic){
+			//Add to report
+			Reflect.setField(report, 'averageFPS', performanceMonitor.fpsAverage);
+
+			browserMonitor.userData.particleCount = particleCount;
+			browserMonitor.userData.fluidScale = fluidScale;
+			browserMonitor.userData.fluidIterations = fluidIterations;
+			browserMonitor.userData.quality = Type.enumConstructor(simulationQuality);
+		});
+
+		//Extract quality parameter, ?q= and set simulation quality
+		var urlParams = js.Lib.eval("
+			(function() {
+			    var match,
+			        pl     = /\\+/g,  // Regex for replacing addition symbol with a space
+			        search = /([^&=]+)=?([^&]*)/g,
+			        decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },
+			        query  = window.location.search.substring(1);
+
+			    var urlParams = {};
+			    while (match = search.exec(query))
+			       urlParams[decode(match[1])] = decode(match[2]);
+			    return urlParams;
+			})();
+		");
+		if(Reflect.hasField(urlParams, 'q')){
+			var q = urlParams.q.toLowerCase();
+			//match enum
+			for(e in Type.allEnums(SimulationQuality)){
+				var name = Type.enumConstructor(e).toLowerCase();
+				if(q == name){
+					simulationQuality = e;
+					performanceMonitor.fpsTooLowCallback = null;
+					break;
+				}
+			}
+		}
 		#end
 	}
 
 	public override function init (context:RenderContext):Void {
-		simulationQuality = Medium;
 
 		switch (context) {
 			case OPENGL (gl):
@@ -96,8 +133,8 @@ class Main extends Application {
 						gl.UNSIGNED_BYTE,
 						gl.NEAREST
 					),
-					Math.round(window.width/1),
-					Math.round(window.height/1)
+					Math.round(window.width*offScreenScale),
+					Math.round(window.height*offScreenScale)
 				);
 
 				screenTextureShader = new ScreenTexture();
@@ -124,11 +161,6 @@ class Main extends Application {
 				//record supported extensions
 				browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
 				browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
-				//record settings
-				browserMonitor.userData.fluidScale = fluidScale;
-				browserMonitor.userData.fluidIterations = fluidIterations;
-				browserMonitor.userData.fluidScale = fluidScale;
-				browserMonitor.userData.particleCount = particleCount;
 				#end
 			default:
 				#if js
@@ -227,22 +259,27 @@ class Main extends Application {
 				particleCount = 1 << 20;
 				fluidScale = 1/2;
 				fluidIterations = 30;
+				offScreenScale = 1/1;
 			case High:
 				particleCount = 1 << 20;
 				fluidScale = 1/4;
 				fluidIterations = 18;
+				offScreenScale = 1/1;
 			case Medium:
 				particleCount = 1 << 18;
 				fluidScale = 1/4;
 				fluidIterations = 16;
+				offScreenScale = 1/1;
 			case Low:
 				particleCount = 1 << 16;
 				fluidScale = 1/5;
 				fluidIterations = 14;
+				offScreenScale = 1/1;
 			case UltraLow:
 				particleCount = 1 << 14;
 				fluidScale = 1/6;
 				fluidIterations = 12;
+				offScreenScale = 1/2;
 		}
 		return simulationQuality = quality;
 	}
@@ -251,6 +288,7 @@ class Main extends Application {
 		fluid.resize(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale));
 		fluid.solverIterations = fluidIterations;
 		particles.setCount(particleCount);
+		offScreenTarget.resize(Math.round(window.width*offScreenScale), Math.round(window.height*offScreenScale));
 	}
 
 	var qualityDirection:Int = 0;
@@ -372,6 +410,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 
 	void main(){
 		vec4 color = texture2D(dye, texelCoord);
+
 		color.r *= (0.9797);
 		color.g *= (0.9494);
 		color.b *= (0.9696);
@@ -411,6 +450,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 
 	void main(){
 		vec2 v = texture2D(velocity, texelCoord).xy;
+
 		v.xy *= 0.999;
 
 		if(isMouseDown){
