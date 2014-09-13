@@ -158,8 +158,7 @@ class Main extends Application {
 				//create controls
 				var gui = new dat.GUI({closed: true});
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
-					//remove query string
-					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;
+					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
 				}).name('Quality').listen();
 				// gui.add(this, 'renderFluidEnabled').name('Show Dye').listen();
 				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
