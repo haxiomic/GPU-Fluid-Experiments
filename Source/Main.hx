@@ -389,14 +389,13 @@ class ScreenTexture extends ShaderBase {}
 		vec2 v = texture2D(particleData, particleUV).zw;
 		gl_PointSize = 1.0;
 		gl_Position = vec4(p, 0.0, 1.0);
-
 		float speed = length(v);
 		float x = clamp(speed * 4.0, 0., 1.);
 		color.rgb = (
-				mix(vec3(10.4, 10., 6.0) / 100.0, vec3(0.2, 47.8, 100) / 100.0, x)
+				mix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)
 				+ (vec3(63.1, 92.5, 100) / 100.) * pow(x, 3.) * .1
 		);
-		color.a = pow(x, .4);
+		color.a = 1.0;
 	}
 ')
 class ColorParticleMotion extends GPUParticles.RenderParticles{}
