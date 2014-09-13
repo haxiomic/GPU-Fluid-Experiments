@@ -67,11 +67,16 @@ class Main extends Application {
 		super();
 
 		performanceMonitor = new PerformanceMonitor(30);
-		performanceMonitor.fpsTooLowCallback = lowerQualityRequired;
 
 		simulationQuality = Medium;
 
+		#if desktop
+		simulationQuality = UltraHigh;
+		#end
+
 		#if js
+		performanceMonitor.fpsTooLowCallback = lowerQualityRequired; //auto adjust quality
+
 		browserMonitor.sendReportAfterTime(8, function(report:Dynamic){
 			//Add to report
 			Reflect.setField(report, 'averageFPS', performanceMonitor.fpsAverage);
@@ -98,7 +103,7 @@ class Main extends Application {
 			})();
 		");
 		if(Reflect.hasField(urlParams, 'q')){
-			var q = urlParams.q.toLowerCase();
+			var q = StringTools.trim(urlParams.q.toLowerCase());
 			//match enum
 			for(e in Type.allEnums(SimulationQuality)){
 				var name = Type.enumConstructor(e).toLowerCase();
@@ -113,7 +118,6 @@ class Main extends Application {
 	}
 
 	public override function init (context:RenderContext):Void {
-
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
@@ -285,10 +289,16 @@ class Main extends Application {
 	}
 
 	function updateSimulationQuality(){
-		fluid.resize(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale));
+		//only resize if there is a change
+		var w:Int, h:Int;
+		w = Math.round(window.width*fluidScale); h = Math.round(window.height*fluidScale);
+		if(w != fluid.width || h != fluid.height) fluid.resize(w, h);
+
+		w = Math.round(window.width*offScreenScale); h = Math.round(window.height*offScreenScale);
+		if(w != offScreenTarget.width || h != offScreenTarget.height) offScreenTarget.resize(w, h);
+
+		if(particleCount != particles.count) particles.setCount(particleCount);
 		fluid.solverIterations = fluidIterations;
-		particles.setCount(particleCount);
-		offScreenTarget.resize(Math.round(window.width*offScreenScale), Math.round(window.height*offScreenScale));
 	}
 
 	var qualityDirection:Int = 0;
