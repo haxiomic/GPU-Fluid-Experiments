@@ -385,6 +385,8 @@ class Main extends Application {
 				renderParticlesEnabled = !renderParticlesEnabled;
 			case KeyCode.D:
 				renderFluidEnabled = !renderFluidEnabled;
+			case KeyCode.S:
+				fluid.clear();
 		}
 	}
 }
