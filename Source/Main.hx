@@ -155,7 +155,7 @@ class Main extends Application {
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
 					//remove query string
 					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;
-				}).name('Quality');
+				}).name('Quality').listen();
 				// gui.add(this, 'renderFluidEnabled').name('Show Dye').listen();
 				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
 				gui.add({f:particles.reset}, 'f').name('Reset Particles');
