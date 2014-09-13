@@ -1499,7 +1499,7 @@ ColorParticleMotion.__name__ = true;
 ColorParticleMotion.__super__ = RenderParticles;
 ColorParticleMotion.prototype = $extend(RenderParticles.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nuniform sampler2D particleData;\n\tattribute vec2 particleUV;\n\tvarying vec4 color;\n\t\n\n\nvoid main(){\n\t\tvec2 p = texture2D(particleData, particleUV).xy;\n\t\tvec2 v = texture2D(particleData, particleUV).zw;\n\t\tgl_PointSize = 1.0;\n\t\tgl_Position = vec4(p, 0.0, 1.0);\n\t\tfloat speed = length(v);\n\t\tfloat x = clamp(speed * 4.0, 0., 1.);\n\t\tcolor.rgb = (\n\t\t\t\tmix(vec3(10.4, 10., 6.0) / 100.0, vec3(0.2, 47.8, 100) / 100.0, x)\n\t\t\t\t+ (vec3(63.1, 92.5, 100) / 100.) * pow(x, 3.) * .1\n\t\t);\n\t\tcolor.a = pow(x, .4);\n\t}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec4 color;\n\tvoid main(){\n\t\tgl_FragColor = vec4(color);\n\t}\n\n\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nuniform sampler2D particleData;\n\tattribute vec2 particleUV;\n\tvarying vec4 color;\n\t\n\n\nvoid main(){\n\t\tvec2 p = texture2D(particleData, particleUV).xy;\n\t\tvec2 v = texture2D(particleData, particleUV).zw;\n\t\tgl_PointSize = 1.0;\n\t\tgl_Position = vec4(p, 0.0, 1.0);\n\t\tfloat speed = length(v);\n\t\tfloat x = clamp(speed * 4.0, 0., 1.);\n\t\tcolor.rgb = (\n\t\t\t\tmix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)\n\t\t\t\t+ (vec3(63.1, 92.5, 100) / 100.) * pow(x, 3.) * .1\n\t\t);\n\t\tcolor.a = 1.0;\n\t}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec4 color;\n\tvoid main(){\n\t\tgl_FragColor = vec4(color);\n\t}\n\n\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1865,7 +1865,6 @@ browsermonitor.BrowserMonitor.prototype = {
 	}
 	,sendReport: function(report) {
 		if(this.serverURL == null) return;
-		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 93, className : "browsermonitor.BrowserMonitor", methodName : "sendReport", customParams : [report]});
 		var request = new XMLHttpRequest();
 		request.open("POST",this.serverURL,true);
 		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
