@@ -92,7 +92,7 @@ class Main extends Application {
 			}
 		}
 
-		browserMonitor.sendReportAfterTime(8, function(report:Dynamic){
+		browserMonitor.onSendCallback = function(report:Dynamic){
 			//Add to report
 			Reflect.setField(report, 'averageFPS', performanceMonitor.fpsAverage);
 			//simulations parameters
@@ -103,7 +103,9 @@ class Main extends Application {
 			//record supported extensions
 			browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
 			browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
-		});
+		}
+
+		browserMonitor.sendReportAfterTime(8);
 
 		#end
 	}
