@@ -235,15 +235,7 @@ var GPUFluid = function(gl,width,height,cellSize,solverIterations) {
 $hxClasses["GPUFluid"] = GPUFluid;
 GPUFluid.__name__ = true;
 GPUFluid.prototype = {
-	resize: function(width,height) {
-		this.velocityRenderTarget.resize(width,height);
-		this.pressureRenderTarget.resize(width,height);
-		this.divergenceRenderTarget.resize(width,height);
-		this.dyeRenderTarget.resize(width,height);
-		this.width = width;
-		this.height = height;
-	}
-	,step: function(dt) {
+	step: function(dt) {
 		this.gl.viewport(0,0,this.width,this.height);
 		this.gl.bindBuffer(this.gl.ARRAY_BUFFER,this.textureQuad);
 		this.advect(this.velocityRenderTarget,dt);
@@ -267,6 +259,19 @@ GPUFluid.prototype = {
 			this.dyeRenderTarget.swap();
 		}
 		this.advect(this.dyeRenderTarget,dt);
+	}
+	,resize: function(width,height) {
+		this.velocityRenderTarget.resize(width,height);
+		this.pressureRenderTarget.resize(width,height);
+		this.divergenceRenderTarget.resize(width,height);
+		this.dyeRenderTarget.resize(width,height);
+		this.width = width;
+		this.height = height;
+	}
+	,clear: function() {
+		this.velocityRenderTarget.clear(this.gl.COLOR_BUFFER_BIT);
+		this.pressureRenderTarget.clear(this.gl.COLOR_BUFFER_BIT);
+		this.dyeRenderTarget.clear(this.gl.COLOR_BUFFER_BIT);
 	}
 	,simToClipSpaceX: function(simX) {
 		return simX / (this.cellSize * this.aspectRatio);
@@ -1239,16 +1244,9 @@ var Main = function() {
 	this.performanceMonitor = new PerformanceMonitor(30);
 	this.set_simulationQuality(SimulationQuality.Medium);
 	this.performanceMonitor.fpsTooLowCallback = $bind(this,this.lowerQualityRequired);
-	this.browserMonitor.sendReportAfterTime(8,function(report) {
-		report.averageFPS = _g.performanceMonitor.fpsSample.average;
-		_g.browserMonitor.userData.particleCount = _g.particleCount;
-		_g.browserMonitor.userData.fluidScale = _g.fluidScale;
-		_g.browserMonitor.userData.fluidIterations = _g.fluidIterations;
-		_g.browserMonitor.userData.quality = _g.simulationQuality[0];
-	});
-	var urlParams = eval("\n\t\t\t(function() {\n\t\t\t    var match,\n\t\t\t        pl     = /\\+/g,  // Regex for replacing addition symbol with a space\n\t\t\t        search = /([^&=]+)=?([^&]*)/g,\n\t\t\t        decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },\n\t\t\t        query  = window.location.search.substring(1);\n\n\t\t\t    var urlParams = {};\n\t\t\t    while (match = search.exec(query))\n\t\t\t       urlParams[decode(match[1])] = decode(match[2]);\n\t\t\t    return urlParams;\n\t\t\t})();\n\t\t");
-	if(Object.prototype.hasOwnProperty.call(urlParams,"q")) {
-		var q = StringTools.trim(urlParams.q.toLowerCase());
+	var urlParams = js.Web.getParams();
+	if(urlParams.exists("q")) {
+		var q = StringTools.trim(urlParams.get("q").toLowerCase());
 		var _g1 = 0;
 		var _g11 = Type.allEnums(SimulationQuality);
 		while(_g1 < _g11.length) {
@@ -1262,12 +1260,20 @@ var Main = function() {
 			}
 		}
 	}
+	this.browserMonitor.sendReportAfterTime(8,function(report) {
+		report.averageFPS = _g.performanceMonitor.fpsSample.average;
+		_g.browserMonitor.userData.particleCount = _g.particleCount;
+		_g.browserMonitor.userData.fluidScale = _g.fluidScale;
+		_g.browserMonitor.userData.fluidIterations = _g.fluidIterations;
+		_g.browserMonitor.userData.quality = _g.simulationQuality[0];
+	});
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
 Main.__super__ = lime.app.Application;
 Main.prototype = $extend(lime.app.Application.prototype,{
 	init: function(context) {
+		var _g = this;
 		switch(context[1]) {
 		case 0:
 			var gl = context[2];
@@ -1293,12 +1299,24 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.particles.set_flowScaleX(this.fluid.simToClipSpaceX(1));
 			this.particles.set_flowScaleY(this.fluid.simToClipSpaceY(1));
 			this.particles.stepParticlesShader.dragCoefficient.set_data(1);
+			var gui = new dat.GUI({ closed : true});
+			gui.add(this,"simulationQuality",Type.allEnums(SimulationQuality)).onChange(function(v) {
+				window.location.href = StringTools.replace(window.location.href,window.location.search,"") + "?q=" + v;
+			}).name("Quality");
+			gui.add(this,"fluidIterations",1,50).name("Solver Iterations").onChange(function(v1) {
+				_g.set_fluidIterations(v1);
+			});
+			gui.add({ f : ($_=this.particles,$bind($_,$_.reset))},"f").name("Reset Particles");
+			gui.add({ f : ($_=this.fluid,$bind($_,$_.clear))},"f").name("Stop Fluid");
+			gui.add({ f : function() {
+				window.open("http://github.com/haxiomic/GPU-Fluid-Experiments","_blank");
+			}},"f").name("View Source");
 			this.browserMonitor.userData.texture_float_linear = gl.getExtension("OES_texture_float_linear") != null;
 			this.browserMonitor.userData.texture_float = gl.getExtension("OES_texture_float") != null;
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 173, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 175, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1361,42 +1379,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.gl.drawArrays(this.gl.POINTS,0,this.particles.count);
 		this.renderParticlesShader.deactivate();
 	}
-	,set_simulationQuality: function(quality) {
-		switch(quality[1]) {
-		case 0:
-			this.particleCount = 1048576;
-			this.fluidScale = 0.5;
-			this.fluidIterations = 30;
-			this.offScreenScale = 1.;
-			break;
-		case 1:
-			this.particleCount = 1048576;
-			this.fluidScale = 0.25;
-			this.fluidIterations = 18;
-			this.offScreenScale = 1.;
-			break;
-		case 2:
-			this.particleCount = 262144;
-			this.fluidScale = 0.25;
-			this.fluidIterations = 16;
-			this.offScreenScale = 1.;
-			break;
-		case 3:
-			this.particleCount = 65536;
-			this.fluidScale = 0.2;
-			this.fluidIterations = 14;
-			this.offScreenScale = 1.;
-			break;
-		case 4:
-			this.particleCount = 16384;
-			this.fluidScale = 0.166666666666666657;
-			this.fluidIterations = 12;
-			this.offScreenScale = 0.5;
-			break;
-		}
-		return this.simulationQuality = quality;
-	}
-	,updateSimulationQuality: function() {
+	,updateSimulationTextures: function() {
 		var w;
 		var h;
 		w = Math.round(this.windows[0].width * this.fluidScale);
@@ -1406,7 +1389,46 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		h = Math.round(this.windows[0].height * this.offScreenScale);
 		if(w != this.offScreenTarget.width || h != this.offScreenTarget.height) this.offScreenTarget.resize(w,h);
 		if(this.particleCount != this.particles.count) this.particles.setCount(this.particleCount);
-		this.fluid.solverIterations = this.fluidIterations;
+	}
+	,set_simulationQuality: function(quality) {
+		switch(quality[1]) {
+		case 0:
+			this.particleCount = 1048576;
+			this.fluidScale = 0.5;
+			this.set_fluidIterations(30);
+			this.offScreenScale = 1.;
+			break;
+		case 1:
+			this.particleCount = 1048576;
+			this.fluidScale = 0.25;
+			this.set_fluidIterations(20);
+			this.offScreenScale = 1.;
+			break;
+		case 2:
+			this.particleCount = 262144;
+			this.fluidScale = 0.25;
+			this.set_fluidIterations(18);
+			this.offScreenScale = 1.;
+			break;
+		case 3:
+			this.particleCount = 65536;
+			this.fluidScale = 0.2;
+			this.set_fluidIterations(14);
+			this.offScreenScale = 1.;
+			break;
+		case 4:
+			this.particleCount = 16384;
+			this.fluidScale = 0.166666666666666657;
+			this.set_fluidIterations(12);
+			this.offScreenScale = 0.5;
+			break;
+		}
+		return this.simulationQuality = quality;
+	}
+	,set_fluidIterations: function(v) {
+		this.fluidIterations = v;
+		if(this.fluid != null) this.fluid.solverIterations = v;
+		return v;
 	}
 	,lowerQualityRequired: function(magnitude) {
 		if(this.qualityDirection > 0) return;
@@ -1419,7 +1441,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
 		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 318, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
-		this.updateSimulationQuality();
+		this.updateSimulationTextures();
 	}
 	,higherQualityRequired: function(magnitude) {
 		if(this.qualityDirection < 0) return;
@@ -1432,10 +1454,11 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
 		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 338, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
-		this.updateSimulationQuality();
+		this.updateSimulationTextures();
 	}
 	,reset: function() {
 		this.particles.reset();
+		this.fluid.clear();
 	}
 	,windowToClipSpaceX: function(x) {
 		return x / this.windows[0].width * 2 - 1;
@@ -2845,6 +2868,21 @@ $hxClasses["js.Lib"] = js.Lib;
 js.Lib.__name__ = true;
 js.Lib.alert = function(v) {
 	alert(js.Boot.__string_rec(v,""));
+};
+js.Web = function() { };
+$hxClasses["js.Web"] = js.Web;
+js.Web.__name__ = true;
+js.Web.getParams = function() {
+	var result = new haxe.ds.StringMap();
+	var paramObj = eval("\n\t\t\t(function() {\n\t\t\t    var match,\n\t\t\t        pl     = /\\+/g,  // Regex for replacing addition symbol with a space\n\t\t\t        search = /([^&=]+)=?([^&]*)/g,\n\t\t\t        decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },\n\t\t\t        query  = window.location.search.substring(1);\n\n\t\t\t    var urlParams = {};\n\t\t\t    while (match = search.exec(query))\n\t\t\t       urlParams[decode(match[1])] = decode(match[2]);\n\t\t\t    return urlParams;\n\t\t\t})();\n\t\t");
+	var _g = 0;
+	var _g1 = Reflect.fields(paramObj);
+	while(_g < _g1.length) {
+		var f = _g1[_g];
+		++_g;
+		result.set(f,Reflect.field(paramObj,f));
+	}
+	return result;
 };
 js.html = {};
 js.html._CanvasElement = {};
@@ -9233,7 +9271,7 @@ lime.ui._KeyCode.KeyCode_Impl_.Q = 113;
 lime.ui._KeyCode.KeyCode_Impl_.R = 114;
 lime.ui._KeyCode.KeyCode_Impl_.S = 115;
 lime.ui._KeyCode.KeyCode_Impl_.T = 116;
-lime.ui._KeyCode.KeyCode_Impl_.U = 75;
+lime.ui._KeyCode.KeyCode_Impl_.U = 117;
 lime.ui._KeyCode.KeyCode_Impl_.V = 118;
 lime.ui._KeyCode.KeyCode_Impl_.W = 119;
 lime.ui._KeyCode.KeyCode_Impl_.X = 120;
