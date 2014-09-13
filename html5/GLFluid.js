@@ -1222,6 +1222,7 @@ lime.app.Application.prototype = $extend(lime.app.Module.prototype,{
 });
 var Main = function() {
 	this.qualityDirection = 0;
+	this.browserMonitor = new browsermonitor.BrowserMonitor("http://awestronomer.com/services/browser-monitor/",false);
 	this.renderFluidEnabled = true;
 	this.renderParticlesEnabled = true;
 	this.lastMouseClipSpace = new lime.math.Vector2();
@@ -1233,18 +1234,40 @@ var Main = function() {
 	this.isMouseDown = false;
 	this.screenBuffer = null;
 	this.textureQuad = null;
+	var _g = this;
 	lime.app.Application.call(this);
 	this.performanceMonitor = new PerformanceMonitor(30);
 	this.performanceMonitor.fpsTooLowCallback = $bind(this,this.lowerQualityRequired);
-	this.browserMonitor = new browsermonitor.BrowserMonitor("http://awestronomer.com/services/browser-monitor/",this,false);
-	this.browserMonitor.sendReportAfterTime(8);
+	this.set_simulationQuality(SimulationQuality.Medium);
+	this.browserMonitor.sendReportAfterTime(8,function(report) {
+		report.averageFPS = _g.performanceMonitor.fpsSample.average;
+		_g.browserMonitor.userData.particleCount = _g.particleCount;
+		_g.browserMonitor.userData.fluidScale = _g.fluidScale;
+		_g.browserMonitor.userData.fluidIterations = _g.fluidIterations;
+		_g.browserMonitor.userData.quality = _g.simulationQuality[0];
+	});
+	var urlParams = eval("\n\t\t\t(function() {\n\t\t\t    var match,\n\t\t\t        pl     = /\\+/g,  // Regex for replacing addition symbol with a space\n\t\t\t        search = /([^&=]+)=?([^&]*)/g,\n\t\t\t        decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },\n\t\t\t        query  = window.location.search.substring(1);\n\n\t\t\t    var urlParams = {};\n\t\t\t    while (match = search.exec(query))\n\t\t\t       urlParams[decode(match[1])] = decode(match[2]);\n\t\t\t    return urlParams;\n\t\t\t})();\n\t\t");
+	if(Object.prototype.hasOwnProperty.call(urlParams,"q")) {
+		var q = urlParams.q.toLowerCase();
+		var _g1 = 0;
+		var _g11 = Type.allEnums(SimulationQuality);
+		while(_g1 < _g11.length) {
+			var e = _g11[_g1];
+			++_g1;
+			var name = e[0].toLowerCase();
+			if(q == name) {
+				this.set_simulationQuality(e);
+				this.performanceMonitor.fpsTooLowCallback = null;
+				break;
+			}
+		}
+	}
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
 Main.__super__ = lime.app.Application;
 Main.prototype = $extend(lime.app.Application.prototype,{
 	init: function(context) {
-		this.set_simulationQuality(SimulationQuality.Medium);
 		switch(context[1]) {
 		case 0:
 			var gl = context[2];
@@ -1253,7 +1276,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			gl.disable(gl.CULL_FACE);
 			gl.disable(gl.DITHER);
 			this.textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1);
-			this.offScreenTarget = new gltoolbox.render.RenderTarget(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.UNSIGNED_BYTE,gl.NEAREST,null),Math.round(this.windows[0].width / 1),Math.round(this.windows[0].height / 1));
+			this.offScreenTarget = new gltoolbox.render.RenderTarget(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.UNSIGNED_BYTE,gl.NEAREST,null),Math.round(this.windows[0].width * this.offScreenScale),Math.round(this.windows[0].height * this.offScreenScale));
 			this.screenTextureShader = new ScreenTexture();
 			this.renderParticlesShader = new ColorParticleMotion();
 			this.updateDyeShader = new MouseDye();
@@ -1272,14 +1295,10 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.particles.stepParticlesShader.dragCoefficient.set_data(1);
 			this.browserMonitor.userData.texture_float_linear = gl.getExtension("OES_texture_float_linear") != null;
 			this.browserMonitor.userData.texture_float = gl.getExtension("OES_texture_float") != null;
-			this.browserMonitor.userData.fluidScale = this.fluidScale;
-			this.browserMonitor.userData.fluidIterations = this.fluidIterations;
-			this.browserMonitor.userData.fluidScale = this.fluidScale;
-			this.browserMonitor.userData.particleCount = this.particleCount;
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 137, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 169, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1348,26 +1367,31 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.particleCount = 1048576;
 			this.fluidScale = 0.5;
 			this.fluidIterations = 30;
+			this.offScreenScale = 1.;
 			break;
 		case 1:
 			this.particleCount = 1048576;
 			this.fluidScale = 0.25;
 			this.fluidIterations = 18;
+			this.offScreenScale = 1.;
 			break;
 		case 2:
 			this.particleCount = 262144;
 			this.fluidScale = 0.25;
 			this.fluidIterations = 16;
+			this.offScreenScale = 1.;
 			break;
 		case 3:
 			this.particleCount = 65536;
 			this.fluidScale = 0.2;
 			this.fluidIterations = 14;
+			this.offScreenScale = 1.;
 			break;
 		case 4:
 			this.particleCount = 16384;
 			this.fluidScale = 0.166666666666666657;
 			this.fluidIterations = 12;
+			this.offScreenScale = 0.5;
 			break;
 		}
 		return this.simulationQuality = quality;
@@ -1376,6 +1400,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.fluid.resize(Math.round(this.windows[0].width * this.fluidScale),Math.round(this.windows[0].height * this.fluidScale));
 		this.fluid.solverIterations = this.fluidIterations;
 		this.particles.setCount(this.particleCount);
+		this.offScreenTarget.resize(Math.round(this.windows[0].width * this.offScreenScale),Math.round(this.windows[0].height * this.offScreenScale));
 	}
 	,lowerQualityRequired: function(magnitude) {
 		if(this.qualityDirection > 0) return;
@@ -1386,7 +1411,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 270, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 308, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationQuality();
 	}
@@ -1399,7 +1424,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 290, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 328, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationQuality();
 	}
@@ -1545,10 +1570,8 @@ var PerformanceMonitor = function(lowerBoundFPS,upperBoundFPS,sampleSize,frameTh
 	if(lowerBoundFPS == null) lowerBoundFPS = 30;
 	this.framesTooHigh = 0;
 	this.framesTooLow = 0;
-	this.fpsTooHighCallback = function(v) {
-	};
-	this.fpsTooLowCallback = function(v) {
-	};
+	this.fpsTooHighCallback = null;
+	this.fpsTooLowCallback = null;
 	this.fpsIgnoreBounds = [5,180];
 	this.lowerBoundFPS = lowerBoundFPS;
 	this.upperBoundFPS = upperBoundFPS;
@@ -1568,7 +1591,7 @@ PerformanceMonitor.prototype = {
 		if(this.fpsSample.average - this.fpsSample.get_standardDeviation() * .5 < this.lowerBoundFPS) {
 			this.framesTooLow++;
 			this.framesTooHigh = 0;
-			if(this.framesTooLow >= this.frameThreshold) {
+			if(this.framesTooLow >= this.frameThreshold && this.fpsTooLowCallback != null) {
 				this.fpsTooLowCallback((this.lowerBoundFPS - (this.fpsSample.average - this.fpsSample.get_standardDeviation() * .5)) / this.lowerBoundFPS);
 				this.fpsSample.clear();
 				this.framesTooLow = 0;
@@ -1576,7 +1599,7 @@ PerformanceMonitor.prototype = {
 		} else if(this.fpsSample.average > this.upperBoundFPS) {
 			this.framesTooHigh++;
 			this.framesTooLow = 0;
-			if(this.framesTooHigh >= this.frameThreshold) {
+			if(this.framesTooHigh >= this.frameThreshold && this.fpsTooHighCallback != null) {
 				this.fpsTooHighCallback((this.fpsSample.average - this.upperBoundFPS) / this.upperBoundFPS);
 				this.fpsSample.clear();
 				this.framesTooHigh = 0;
@@ -1791,17 +1814,13 @@ Type.allEnums = function(e) {
 	return e.__empty_constructs__;
 };
 var browsermonitor = {};
-browsermonitor.BrowserMonitor = function(serverURL,app,recordConsoleOutput) {
+browsermonitor.BrowserMonitor = function(serverURL,recordConsoleOutput) {
 	if(recordConsoleOutput == null) recordConsoleOutput = false;
-	this.timeSamples = 0;
 	this.recordConsoleOutput = false;
 	this.userData = { };
 	this.mouseClicks = 0;
-	this.averageFrameTime = 0;
-	this.averageFPS = 0;
 	var _g = this;
 	this.serverURL = serverURL;
-	this.app = app;
 	this.recordConsoleOutput = recordConsoleOutput;
 	this.userAgent = window.navigator.userAgent;
 	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
@@ -1836,17 +1855,21 @@ browsermonitor.BrowserMonitor = function(serverURL,app,recordConsoleOutput) {
 $hxClasses["browsermonitor.BrowserMonitor"] = browsermonitor.BrowserMonitor;
 browsermonitor.BrowserMonitor.__name__ = true;
 browsermonitor.BrowserMonitor.prototype = {
-	sendReportAfterTime: function(seconds) {
-		haxe.Timer.delay($bind(this,this.sendReport),seconds * 1000);
+	sendReportAfterTime: function(seconds,onSendCallback) {
+		var _g = this;
+		haxe.Timer.delay(function() {
+			var report = _g.createReportJSON();
+			if(onSendCallback != null) onSendCallback(report);
+			_g.sendReport(report);
+		},seconds * 1000);
 	}
-	,sendReport: function() {
+	,sendReport: function(report) {
 		if(this.serverURL == null) return;
-		var data = this.createReportJSON();
-		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 97, className : "browsermonitor.BrowserMonitor", methodName : "sendReport", customParams : [data]});
+		haxe.Log.trace("Sending performance data",{ fileName : "BrowserMonitor.hx", lineNumber : 93, className : "browsermonitor.BrowserMonitor", methodName : "sendReport", customParams : [report]});
 		var request = new XMLHttpRequest();
 		request.open("POST",this.serverURL,true);
 		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
-		request.send(data);
+		request.send(JSON.stringify(report));
 	}
 	,isSafari: function() {
 		return new EReg("Safari","i").match(this.browserName);
@@ -1857,17 +1880,10 @@ browsermonitor.BrowserMonitor.prototype = {
 	,isFirefox: function() {
 		return new EReg("Firefox","i").match(this.browserName);
 	}
-	,addDt: function(dt_ms) {
-		if(dt_ms > 8.3 && dt_ms < 200.) {
-			this.averageFrameTime = this.averageFrameTime / (1 + 1 / this.timeSamples) + dt_ms / (this.timeSamples + 1);
-			this.averageFPS = 1000 / this.averageFrameTime;
-			this.timeSamples++;
-		}
-	}
 	,createReportJSON: function() {
-		var json = { browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, averageFPS : Math.round(this.averageFPS * 100) / 100, timeSamples : this.timeSamples, mouseClicks : this.mouseClicks, userData : this.userData};
+		var json = { browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, mouseClicks : this.mouseClicks, userData : this.userData};
 		if(this.recordConsoleOutput) json.console = { log : this.consoleLog, error : this.consoleError, warn : this.consoleWarn};
-		return JSON.stringify(json);
+		return json;
 	}
 	,__class__: browsermonitor.BrowserMonitor
 };
