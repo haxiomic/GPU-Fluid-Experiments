@@ -1261,7 +1261,7 @@ var Main = function() {
 		}
 	}
 	this.browserMonitor.onSendCallback = function(report) {
-		report.averageFPS = _g.performanceMonitor.fpsSample.average;
+		Reflect.setField(report,"averageFPS",Math.round(_g.performanceMonitor.fpsSample.average * 10) / 10);
 		_g.browserMonitor.userData.particleCount = _g.particleCount;
 		_g.browserMonitor.userData.fluidScale = _g.fluidScale;
 		_g.browserMonitor.userData.fluidIterations = _g.fluidIterations;
