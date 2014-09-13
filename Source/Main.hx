@@ -86,7 +86,7 @@ class Main extends Application {
 				var name = Type.enumConstructor(e).toLowerCase();
 				if(q == name){
 					simulationQuality = e;
-					performanceMonitor.fpsTooLowCallback = null;
+					performanceMonitor.fpsTooLowCallback = null; //disable auto quality adjusting
 					break;
 				}
 			}
@@ -95,11 +95,14 @@ class Main extends Application {
 		browserMonitor.sendReportAfterTime(8, function(report:Dynamic){
 			//Add to report
 			Reflect.setField(report, 'averageFPS', performanceMonitor.fpsAverage);
-
+			//simulations parameters
 			browserMonitor.userData.particleCount = particleCount;
 			browserMonitor.userData.fluidScale = fluidScale;
 			browserMonitor.userData.fluidIterations = fluidIterations;
 			browserMonitor.userData.quality = Type.enumConstructor(simulationQuality);
+			//record supported extensions
+			browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
+			browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
 		});
 
 		#end
@@ -163,10 +166,6 @@ class Main extends Application {
 				gui.add({f:function(){
 					js.Browser.window.open('http://github.com/haxiomic/GPU-Fluid-Experiments', '_blank');
 				}}, 'f').name('View Source');
-
-				//record supported extensions
-				browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
-				browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
 				#end
 			default:
 				#if js
