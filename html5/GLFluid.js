@@ -1260,7 +1260,7 @@ var Main = function() {
 			}
 		}
 	}
-	this.browserMonitor.sendReportAfterTime(8,function(report) {
+	this.browserMonitor.onSendCallback = function(report) {
 		report.averageFPS = _g.performanceMonitor.fpsSample.average;
 		_g.browserMonitor.userData.particleCount = _g.particleCount;
 		_g.browserMonitor.userData.fluidScale = _g.fluidScale;
@@ -1268,7 +1268,8 @@ var Main = function() {
 		_g.browserMonitor.userData.quality = _g.simulationQuality[0];
 		_g.browserMonitor.userData.texture_float_linear = _g.gl.getExtension("OES_texture_float_linear") != null;
 		_g.browserMonitor.userData.texture_float = _g.gl.getExtension("OES_texture_float") != null;
-	});
+	};
+	this.browserMonitor.sendReportAfterTime(8);
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
@@ -1316,7 +1317,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 174, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 176, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1439,7 +1440,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 317, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 319, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1452,7 +1453,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 337, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 339, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1862,7 +1863,7 @@ Type.allEnums = function(e) {
 	return e.__empty_constructs__;
 };
 var browsermonitor = {};
-browsermonitor.BrowserMonitor = function(serverURL,recordConsoleOutput) {
+browsermonitor.BrowserMonitor = function(serverURL,recordConsoleOutput,onSendCallback) {
 	if(recordConsoleOutput == null) recordConsoleOutput = false;
 	this.recordConsoleOutput = false;
 	this.userData = { };
@@ -1870,6 +1871,7 @@ browsermonitor.BrowserMonitor = function(serverURL,recordConsoleOutput) {
 	var _g = this;
 	this.serverURL = serverURL;
 	this.recordConsoleOutput = recordConsoleOutput;
+	this.onSendCallback = onSendCallback;
 	this.userAgent = window.navigator.userAgent;
 	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
 	this.windowWidth = window.innerWidth;
@@ -1899,24 +1901,39 @@ browsermonitor.BrowserMonitor = function(serverURL,recordConsoleOutput) {
 			};
 		})();
 	}
+	this.startTime = haxe.Timer.stamp();
 };
 $hxClasses["browsermonitor.BrowserMonitor"] = browsermonitor.BrowserMonitor;
 browsermonitor.BrowserMonitor.__name__ = true;
 browsermonitor.BrowserMonitor.prototype = {
-	sendReportAfterTime: function(seconds,onSendCallback) {
+	sendReportAfterTime: function(seconds) {
 		var _g = this;
 		haxe.Timer.delay(function() {
-			var report = _g.createReportJSON();
-			if(onSendCallback != null) onSendCallback(report);
-			_g.sendReport(report);
+			_g.sendReport();
 		},seconds * 1000);
 	}
-	,sendReport: function(report) {
+	,sendReportOnExit: function(timeout_ms) {
+		if(timeout_ms == null) timeout_ms = 500;
+		var _g = this;
+		window.onbeforeunload = function(e) {
+			var timeOnPage = haxe.Timer.stamp() - _g.startTime;
+			var report = _g.createReportJSON();
+			report.timeOnPage = timeOnPage;
+			_g.sendReport(report,false,timeout_ms);
+		};
+	}
+	,sendReport: function(report,async,timeout_ms) {
+		if(async == null) async = true;
 		if(this.serverURL == null) return;
+		if(report == null) report = this.createReportJSON();
+		if(Reflect.isFunction(this.onSendCallback)) this.onSendCallback(report);
 		var request = new XMLHttpRequest();
-		request.open("POST",this.serverURL,true);
+		request.open("POST",this.serverURL,async);
 		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
 		request.send(JSON.stringify(report));
+		if(timeout_ms != null) haxe.Timer.delay(function() {
+			request.abort();
+		},timeout_ms);
 	}
 	,isSafari: function() {
 		return new EReg("Safari","i").match(this.browserName);
