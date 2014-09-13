@@ -57,7 +57,7 @@ class Main extends Application {
 	//Parameters
 	var particleCount:Int;
 	var fluidScale:Float;
-	var fluidIterations:Int;
+	var fluidIterations(default, set):Int;
 	var offScreenScale:Float;
 	var simulationQuality(default, set):SimulationQuality;
 
@@ -77,33 +77,10 @@ class Main extends Application {
 		#if js
 		performanceMonitor.fpsTooLowCallback = lowerQualityRequired; //auto adjust quality
 
-		browserMonitor.sendReportAfterTime(8, function(report:Dynamic){
-			//Add to report
-			Reflect.setField(report, 'averageFPS', performanceMonitor.fpsAverage);
-
-			browserMonitor.userData.particleCount = particleCount;
-			browserMonitor.userData.fluidScale = fluidScale;
-			browserMonitor.userData.fluidIterations = fluidIterations;
-			browserMonitor.userData.quality = Type.enumConstructor(simulationQuality);
-		});
-
 		//Extract quality parameter, ?q= and set simulation quality
-		var urlParams = js.Lib.eval("
-			(function() {
-			    var match,
-			        pl     = /\\+/g,  // Regex for replacing addition symbol with a space
-			        search = /([^&=]+)=?([^&]*)/g,
-			        decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },
-			        query  = window.location.search.substring(1);
-
-			    var urlParams = {};
-			    while (match = search.exec(query))
-			       urlParams[decode(match[1])] = decode(match[2]);
-			    return urlParams;
-			})();
-		");
-		if(Reflect.hasField(urlParams, 'q')){
-			var q = StringTools.trim(urlParams.q.toLowerCase());
+		var urlParams = js.Web.getParams();
+		if(urlParams.exists('q')){
+			var q = StringTools.trim(urlParams.get('q').toLowerCase());
 			//match enum
 			for(e in Type.allEnums(SimulationQuality)){
 				var name = Type.enumConstructor(e).toLowerCase();
@@ -114,6 +91,17 @@ class Main extends Application {
 				}
 			}
 		}
+
+		browserMonitor.sendReportAfterTime(8, function(report:Dynamic){
+			//Add to report
+			Reflect.setField(report, 'averageFPS', performanceMonitor.fpsAverage);
+
+			browserMonitor.userData.particleCount = particleCount;
+			browserMonitor.userData.fluidScale = fluidScale;
+			browserMonitor.userData.fluidIterations = fluidIterations;
+			browserMonitor.userData.quality = Type.enumConstructor(simulationQuality);
+		});
+
 		#end
 	}
 
@@ -162,6 +150,20 @@ class Main extends Application {
 				particles.dragCoefficient = 1;
 
 				#if js
+				//create controls
+				var gui = new dat.GUI({closed: true});
+				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
+					//remove query string
+					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;
+				}).name('Quality');
+				// gui.add(this, 'renderFluidEnabled').name('Show Dye').listen();
+				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
+				gui.add({f:particles.reset}, 'f').name('Reset Particles');
+				gui.add({f:fluid.clear}, 'f').name('Stop Fluid');
+				gui.add({f:function(){
+					js.Browser.window.open('http://github.com/haxiomic/GPU-Fluid-Experiments', '_blank');
+				}}, 'f').name('View Source');
+
 				//record supported extensions
 				browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
 				browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
@@ -246,15 +248,20 @@ class Main extends Application {
 
 		//draw points
 		renderParticlesShader.activate(true, true);
-		//additive blending between particles
-		// gl.enable(gl.BLEND);
-		// gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
-		// gl.blendEquation(gl.FUNC_ADD);
-
 		gl.drawArrays(gl.POINTS, 0, particles.count);
-
-		// gl.disable(gl.BLEND);
 		renderParticlesShader.deactivate();
+	}
+
+	function updateSimulationTextures(){
+		//only resize if there is a change
+		var w:Int, h:Int;
+		w = Math.round(window.width*fluidScale); h = Math.round(window.height*fluidScale);
+		if(w != fluid.width || h != fluid.height) fluid.resize(w, h);
+
+		w = Math.round(window.width*offScreenScale); h = Math.round(window.height*offScreenScale);
+		if(w != offScreenTarget.width || h != offScreenTarget.height) offScreenTarget.resize(w, h);
+
+		if(particleCount != particles.count) particles.setCount(particleCount);
 	}
 
 	function set_simulationQuality(quality:SimulationQuality):SimulationQuality{
@@ -267,12 +274,12 @@ class Main extends Application {
 			case High:
 				particleCount = 1 << 20;
 				fluidScale = 1/4;
-				fluidIterations = 18;
+				fluidIterations = 20;
 				offScreenScale = 1/1;
 			case Medium:
 				particleCount = 1 << 18;
 				fluidScale = 1/4;
-				fluidIterations = 16;
+				fluidIterations = 18;
 				offScreenScale = 1/1;
 			case Low:
 				particleCount = 1 << 16;
@@ -288,17 +295,10 @@ class Main extends Application {
 		return simulationQuality = quality;
 	}
 
-	function updateSimulationQuality(){
-		//only resize if there is a change
-		var w:Int, h:Int;
-		w = Math.round(window.width*fluidScale); h = Math.round(window.height*fluidScale);
-		if(w != fluid.width || h != fluid.height) fluid.resize(w, h);
-
-		w = Math.round(window.width*offScreenScale); h = Math.round(window.height*offScreenScale);
-		if(w != offScreenTarget.width || h != offScreenTarget.height) offScreenTarget.resize(w, h);
-
-		if(particleCount != particles.count) particles.setCount(particleCount);
-		fluid.solverIterations = fluidIterations;
+	function set_fluidIterations(v:Int):Int{
+		fluidIterations = v;
+		if(fluid != null) fluid.solverIterations = v;
+		return v;
 	}
 
 	var qualityDirection:Int = 0;
@@ -317,7 +317,7 @@ class Main extends Application {
 		var newQuality = Type.createEnumIndex(SimulationQuality, qualityIndex);
 		trace('Lowering quality to: '+newQuality);
 		this.simulationQuality = newQuality;
-		updateSimulationQuality();
+		updateSimulationTextures();
 	}
 
 	//!# Requires better upsampling before use!
@@ -337,7 +337,7 @@ class Main extends Application {
 		var newQuality = Type.createEnumIndex(SimulationQuality, qualityIndex);
 		trace('Raising quality to: '+newQuality);
 		this.simulationQuality = newQuality;
-		updateSimulationQuality();
+		updateSimulationTextures();
 	}
 
 
@@ -345,6 +345,7 @@ class Main extends Application {
 
 	function reset():Void{
 		particles.reset();	
+		fluid.clear();
 	}
 
 	//coordinate conversion

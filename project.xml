@@ -17,4 +17,6 @@
 	<haxelib name="gltoolbox" />
 	<haxelib name="browsermonitor" />
 
+	<template path="Templates" />
+
 </project>

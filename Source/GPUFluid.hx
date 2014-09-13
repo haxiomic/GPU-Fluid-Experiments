@@ -81,15 +81,6 @@ class GPUFluid{
 		updateCoreShaderUniforms(pressureGradientSubstractShader);
 	}
 
-	public inline function resize(width:Int, height:Int){
-		velocityRenderTarget.resize(width, height);
-		pressureRenderTarget.resize(width, height);
-		divergenceRenderTarget.resize(width, height);
-		dyeRenderTarget.resize(width, height);
-		this.width = width;
-		this.height = height;
-	}
-
 	public function step(dt:Float){
 		gl.viewport(0, 0, this.width, this.height);
 
@@ -106,6 +97,21 @@ class GPUFluid{
 
 		updateDye(dt);
 		advect(dyeRenderTarget, dt);
+	}
+
+	public inline function resize(width:Int, height:Int){
+		velocityRenderTarget.resize(width, height);
+		pressureRenderTarget.resize(width, height);
+		divergenceRenderTarget.resize(width, height);
+		dyeRenderTarget.resize(width, height);
+		this.width = width;
+		this.height = height;
+	}
+
+	public inline function clear(){
+		velocityRenderTarget.clear(gl.COLOR_BUFFER_BIT);
+		pressureRenderTarget.clear(gl.COLOR_BUFFER_BIT);
+		dyeRenderTarget.clear(gl.COLOR_BUFFER_BIT);
 	}
 
 	public function simToClipSpaceX(simX:Float) return simX/(this.cellSize * this.aspectRatio);
