@@ -1237,8 +1237,8 @@ var Main = function() {
 	var _g = this;
 	lime.app.Application.call(this);
 	this.performanceMonitor = new PerformanceMonitor(30);
-	this.performanceMonitor.fpsTooLowCallback = $bind(this,this.lowerQualityRequired);
 	this.set_simulationQuality(SimulationQuality.Medium);
+	this.performanceMonitor.fpsTooLowCallback = $bind(this,this.lowerQualityRequired);
 	this.browserMonitor.sendReportAfterTime(8,function(report) {
 		report.averageFPS = _g.performanceMonitor.fpsSample.average;
 		_g.browserMonitor.userData.particleCount = _g.particleCount;
@@ -1248,7 +1248,7 @@ var Main = function() {
 	});
 	var urlParams = eval("\n\t\t\t(function() {\n\t\t\t    var match,\n\t\t\t        pl     = /\\+/g,  // Regex for replacing addition symbol with a space\n\t\t\t        search = /([^&=]+)=?([^&]*)/g,\n\t\t\t        decode = function (s) { return decodeURIComponent(s.replace(pl, ' ')); },\n\t\t\t        query  = window.location.search.substring(1);\n\n\t\t\t    var urlParams = {};\n\t\t\t    while (match = search.exec(query))\n\t\t\t       urlParams[decode(match[1])] = decode(match[2]);\n\t\t\t    return urlParams;\n\t\t\t})();\n\t\t");
 	if(Object.prototype.hasOwnProperty.call(urlParams,"q")) {
-		var q = urlParams.q.toLowerCase();
+		var q = StringTools.trim(urlParams.q.toLowerCase());
 		var _g1 = 0;
 		var _g11 = Type.allEnums(SimulationQuality);
 		while(_g1 < _g11.length) {
@@ -1298,7 +1298,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 169, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 173, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1397,10 +1397,16 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		return this.simulationQuality = quality;
 	}
 	,updateSimulationQuality: function() {
-		this.fluid.resize(Math.round(this.windows[0].width * this.fluidScale),Math.round(this.windows[0].height * this.fluidScale));
+		var w;
+		var h;
+		w = Math.round(this.windows[0].width * this.fluidScale);
+		h = Math.round(this.windows[0].height * this.fluidScale);
+		if(w != this.fluid.width || h != this.fluid.height) this.fluid.resize(w,h);
+		w = Math.round(this.windows[0].width * this.offScreenScale);
+		h = Math.round(this.windows[0].height * this.offScreenScale);
+		if(w != this.offScreenTarget.width || h != this.offScreenTarget.height) this.offScreenTarget.resize(w,h);
+		if(this.particleCount != this.particles.count) this.particles.setCount(this.particleCount);
 		this.fluid.solverIterations = this.fluidIterations;
-		this.particles.setCount(this.particleCount);
-		this.offScreenTarget.resize(Math.round(this.windows[0].width * this.offScreenScale),Math.round(this.windows[0].height * this.offScreenScale));
 	}
 	,lowerQualityRequired: function(magnitude) {
 		if(this.qualityDirection > 0) return;
@@ -1411,7 +1417,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 308, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 318, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationQuality();
 	}
@@ -1424,7 +1430,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 328, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 338, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationQuality();
 	}
@@ -1737,6 +1743,25 @@ StringTools.urlDecode = function(s) {
 };
 StringTools.startsWith = function(s,start) {
 	return s.length >= start.length && HxOverrides.substr(s,0,start.length) == start;
+};
+StringTools.isSpace = function(s,pos) {
+	var c = HxOverrides.cca(s,pos);
+	return c > 8 && c < 14 || c == 32;
+};
+StringTools.ltrim = function(s) {
+	var l = s.length;
+	var r = 0;
+	while(r < l && StringTools.isSpace(s,r)) r++;
+	if(r > 0) return HxOverrides.substr(s,r,l - r); else return s;
+};
+StringTools.rtrim = function(s) {
+	var l = s.length;
+	var r = 0;
+	while(r < l && StringTools.isSpace(s,l - r - 1)) r++;
+	if(r > 0) return HxOverrides.substr(s,0,l - r); else return s;
+};
+StringTools.trim = function(s) {
+	return StringTools.ltrim(StringTools.rtrim(s));
 };
 StringTools.replace = function(s,sub,by) {
 	return s.split(sub).join(by);
