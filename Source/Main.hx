@@ -404,7 +404,7 @@ class ScreenTexture extends ShaderBase {}
 		float x = clamp(speed * 4.0, 0., 1.);
 		color.rgb = (
 				mix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)
-				+ (vec3(63.1, 92.5, 100) / 100.) * pow(x, 3.) * .1
+				+ (vec3(63.1, 92.5, 100) / 100.) * x*x*x * .1
 		);
 		color.a = 1.0;
 	}
@@ -429,15 +429,15 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
 			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
 			
-			
+			//compute tapered distance to mouse line segment
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
 			float taperFactor = 0.6;
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
+
 			float R = 0.025;
 			float m = exp(-l/R);
 			
- 			
  			float speed = length(mouseVelocity);
 			float x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);
 			color.rgb += m * (
@@ -478,10 +478,8 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float m = exp(-l/R); //drag coefficient
 			m *= projectedFraction * projectedFraction;
 
-			vec2 tv = mouseVelocity*dx;
-			// float maxSpeed = 10.04 * dx / dt;
-			// tv = clamp(tv, -maxSpeed, maxSpeed); //impose max speed
-			v += (tv - v)*m;
+			vec2 targetVelocity = mouseVelocity*dx;
+			v += (targetVelocity - v)*m;
 		}
 
 		gl_FragColor = vec4(v, 0, 1.);
