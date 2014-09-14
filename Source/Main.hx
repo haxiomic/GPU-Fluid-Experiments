@@ -66,7 +66,7 @@ class Main extends Application {
 	public function new () {
 		super();
 
-		performanceMonitor = new PerformanceMonitor(30);
+		performanceMonitor = new PerformanceMonitor(30, null, 2000);
 
 		simulationQuality = Medium;
 
@@ -315,7 +315,7 @@ class Main extends Application {
 		if(qualityIndex > maxIndex)qualityIndex = maxIndex;
 
 		var newQuality = Type.createEnumIndex(SimulationQuality, qualityIndex);
-		trace('Lowering quality to: '+newQuality);
+		trace('Average FPS: '+performanceMonitor.fpsAverage+', lowering quality to: '+newQuality);
 		this.simulationQuality = newQuality;
 		updateSimulationTextures();
 	}

@@ -17,15 +17,15 @@ class PerformanceMonitor{
 
 	var fpsSample:RollingSample;
 
-	var framesTooLow:Int = 0;
-	var framesTooHigh:Int = 0;
-	var frameThreshold:Int;
+	var lowerBoundEnterTime:Null<Float> = null;
+	var upperBoundEnterTime:Null<Float> = null;
+	var thresholdTime_ms:Float;
 
-	public function new(lowerBoundFPS:Float = 30, ?upperBoundFPS:Float, sampleSize:Int = 60, frameThreshold:Int = 100){
+	public function new(lowerBoundFPS:Float = 30, ?upperBoundFPS:Float, thresholdTime_ms:Float = 3000, fpsSampleSize:Int = 30){
 		this.lowerBoundFPS = lowerBoundFPS;
 		this.upperBoundFPS = upperBoundFPS;
-		this.fpsSample = new RollingSample(sampleSize);
-		this.frameThreshold = frameThreshold;
+		this.thresholdTime_ms = thresholdTime_ms;
+		this.fpsSample = new RollingSample(fpsSampleSize);
 	}
 
 	public inline function recordFrameTime(dt_seconds:Float) if(dt_seconds>0) recordFPS(1/dt_seconds);
@@ -36,25 +36,28 @@ class PerformanceMonitor{
 		//check if sample is completed
 		if(fpsSample.sampleCount < fpsSample.length) return;
 
-		if((fpsSample.average - fpsSample.standardDeviation * .5) < lowerBoundFPS){
-			framesTooLow++;
-			framesTooHigh = 0;
-			if(framesTooLow >= frameThreshold && fpsTooLowCallback != null){
-				fpsTooLowCallback((lowerBoundFPS - (fpsSample.average - fpsSample.standardDeviation * .5)) / lowerBoundFPS);
+		var now = haxe.Timer.stamp() * 1000;
+
+		if(fpsSample.average < lowerBoundFPS){
+			if(lowerBoundEnterTime == null)lowerBoundEnterTime = now;
+
+			if((now - lowerBoundEnterTime) >= thresholdTime_ms && fpsTooLowCallback != null){
+				fpsTooLowCallback((lowerBoundFPS - fpsSample.average) / lowerBoundFPS);
 				fpsSample.clear();
-				framesTooLow = 0;
+				lowerBoundEnterTime = null;
 			}
+
 		}else if(fpsSample.average > upperBoundFPS){
-			framesTooHigh++;
-			framesTooLow = 0;
-			if(framesTooHigh >= frameThreshold && fpsTooHighCallback != null){
+			if(upperBoundEnterTime == null)upperBoundEnterTime = now;
+
+			if((now - upperBoundEnterTime) >= thresholdTime_ms && fpsTooHighCallback != null){
 				fpsTooHighCallback((fpsSample.average - upperBoundFPS) / upperBoundFPS);
 				fpsSample.clear();
-				framesTooHigh = 0;
+				upperBoundEnterTime = null;
 			}
 		}else{
-			framesTooLow = 0;
-			framesTooHigh = 0;
+			lowerBoundEnterTime = null;
+			upperBoundEnterTime = null;	
 		}
 
 	}
