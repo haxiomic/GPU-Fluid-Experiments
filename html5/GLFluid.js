@@ -1241,7 +1241,7 @@ var Main = function() {
 	this.textureQuad = null;
 	var _g = this;
 	lime.app.Application.call(this);
-	this.performanceMonitor = new PerformanceMonitor(30);
+	this.performanceMonitor = new PerformanceMonitor(30,null,2000);
 	this.set_simulationQuality(SimulationQuality.Medium);
 	this.performanceMonitor.fpsTooLowCallback = $bind(this,this.lowerQualityRequired);
 	var urlParams = js.Web.getParams();
@@ -1440,7 +1440,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 318, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 318, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1493,6 +1493,9 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			break;
 		case 100:
 			this.renderFluidEnabled = !this.renderFluidEnabled;
+			break;
+		case 115:
+			this.fluid.clear();
 			break;
 		}
 	}
@@ -1594,19 +1597,19 @@ var IMap = function() { };
 $hxClasses["IMap"] = IMap;
 IMap.__name__ = true;
 Math.__name__ = true;
-var PerformanceMonitor = function(lowerBoundFPS,upperBoundFPS,sampleSize,frameThreshold) {
-	if(frameThreshold == null) frameThreshold = 100;
-	if(sampleSize == null) sampleSize = 60;
+var PerformanceMonitor = function(lowerBoundFPS,upperBoundFPS,thresholdTime_ms,fpsSampleSize) {
+	if(fpsSampleSize == null) fpsSampleSize = 30;
+	if(thresholdTime_ms == null) thresholdTime_ms = 3000;
 	if(lowerBoundFPS == null) lowerBoundFPS = 30;
-	this.framesTooHigh = 0;
-	this.framesTooLow = 0;
+	this.upperBoundEnterTime = null;
+	this.lowerBoundEnterTime = null;
 	this.fpsTooHighCallback = null;
 	this.fpsTooLowCallback = null;
 	this.fpsIgnoreBounds = [5,180];
 	this.lowerBoundFPS = lowerBoundFPS;
 	this.upperBoundFPS = upperBoundFPS;
-	this.fpsSample = new RollingSample(sampleSize);
-	this.frameThreshold = frameThreshold;
+	this.thresholdTime_ms = thresholdTime_ms;
+	this.fpsSample = new RollingSample(fpsSampleSize);
 };
 $hxClasses["PerformanceMonitor"] = PerformanceMonitor;
 PerformanceMonitor.__name__ = true;
@@ -1618,25 +1621,24 @@ PerformanceMonitor.prototype = {
 		if(fps < this.fpsIgnoreBounds[0] && fps > this.fpsIgnoreBounds[1]) return;
 		this.fpsSample.add(fps);
 		if(this.fpsSample.sampleCount < this.fpsSample.length) return;
-		if(this.fpsSample.average - this.fpsSample.get_standardDeviation() * .5 < this.lowerBoundFPS) {
-			this.framesTooLow++;
-			this.framesTooHigh = 0;
-			if(this.framesTooLow >= this.frameThreshold && this.fpsTooLowCallback != null) {
-				this.fpsTooLowCallback((this.lowerBoundFPS - (this.fpsSample.average - this.fpsSample.get_standardDeviation() * .5)) / this.lowerBoundFPS);
+		var now = haxe.Timer.stamp() * 1000;
+		if(this.fpsSample.average < this.lowerBoundFPS) {
+			if(this.lowerBoundEnterTime == null) this.lowerBoundEnterTime = now;
+			if(now - this.lowerBoundEnterTime >= this.thresholdTime_ms && this.fpsTooLowCallback != null) {
+				this.fpsTooLowCallback((this.lowerBoundFPS - this.fpsSample.average) / this.lowerBoundFPS);
 				this.fpsSample.clear();
-				this.framesTooLow = 0;
+				this.lowerBoundEnterTime = null;
 			}
 		} else if(this.fpsSample.average > this.upperBoundFPS) {
-			this.framesTooHigh++;
-			this.framesTooLow = 0;
-			if(this.framesTooHigh >= this.frameThreshold && this.fpsTooHighCallback != null) {
+			if(this.upperBoundEnterTime == null) this.upperBoundEnterTime = now;
+			if(now - this.upperBoundEnterTime >= this.thresholdTime_ms && this.fpsTooHighCallback != null) {
 				this.fpsTooHighCallback((this.fpsSample.average - this.upperBoundFPS) / this.upperBoundFPS);
 				this.fpsSample.clear();
-				this.framesTooHigh = 0;
+				this.upperBoundEnterTime = null;
 			}
 		} else {
-			this.framesTooLow = 0;
-			this.framesTooHigh = 0;
+			this.lowerBoundEnterTime = null;
+			this.upperBoundEnterTime = null;
 		}
 	}
 	,get_fpsAverage: function() {
