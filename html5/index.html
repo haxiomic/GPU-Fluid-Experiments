@@ -10,12 +10,6 @@
 	<meta id="viewport" name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<meta name="apple-mobile-web-app-capable" content="yes">
 
-	<!-- Open Graph Meta -->
-	<meta property="og:title" content="WebGL Fluid Experiment" />
-	<meta property="og:type" content="website" />
-	<meta property="og:url" content="http://haxiomic.github.io/GPU-Fluid-Experiments/html5/" />
-	<meta property="og:image" content="http://haxiomic.github.io/GPU-Fluid-Experiments/html5/glfluid.jpg" />
-	
 	
 	<script type="text/javascript" src="./GLFluid.js"></script>
 	
@@ -33,6 +27,59 @@
 		
 	</style>
 
+	<!-- Icon Font -->
+	<link rel="stylesheet" type="text/css" href="iconfont.css">
+	<!-- Open Graph Meta -->
+	<meta property="og:title" content="WebGL Fluid Experiment" />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="http://haxiomic.github.io/GPU-Fluid-Experiments/html5/" />
+	<meta property="og:image" content="http://haxiomic.github.io/GPU-Fluid-Experiments/html5/glfluid.jpg" />
+	<!-- / -->
+	<!-- Additional dat.GUI styling -->
+	<style>
+	/* green left border for selects */
+	.dg .cr.object{
+		border-left: 3px solid #5CB36D;
+	}
+
+	/* disabled row style */
+	.dg .cr.disabled{
+		border-left-color: #353535 !important;
+	}
+	.dg .cr input[disabled]{
+		background: none !important;
+		color: #8C8C8C !important;
+	}
+
+	/* new row type: link */
+	.dg .cr.link, .dg .cr.link .property-name, .dg .cr.link *{
+		cursor: pointer;
+	}
+
+	.dg .cr.link:hover{
+		background: #111;
+	}
+
+	.dg .cr.footer, .dg .cr.footer .property-name, .dg .cr.footer *{
+		font-size: 110%;
+	}
+
+	/* new row type: footer */
+	.dg .cr.footer{
+		color: #4A4C4E;
+		transition: color 0.2s;
+	}
+	.dg .cr.footer:hover{
+		color: #2FA1D6;
+		transition: color 0.2s;
+	}
+
+	/* row icon */
+	.dg .cr [class^="icon-"], [class*=" icon-"]{
+		font-size: 150%;
+		float: right;
+	}
+	</style>
 	<script type="text/javascript" src="./dat.gui.min.js"></script>
 	<script>
 	  //Google Analytics
@@ -49,7 +96,7 @@
 	
 	
 	<div id="content"></div>
-	
+
 	<script type="text/javascript">
 		lime.embed ("content", 0, 0, "FFFFFF");
 	</script>
