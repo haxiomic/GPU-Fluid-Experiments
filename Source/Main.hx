@@ -62,7 +62,7 @@ class Main extends Application {
 	public function new () {
 		super();
 
-		performanceMonitor = new PerformanceMonitor(30, null, 2000);
+		performanceMonitor = new PerformanceMonitor(35, null, 2000);
 
 		simulationQuality = Medium;
 
@@ -136,17 +136,6 @@ class Main extends Application {
 
 				#if js
 				//Google Analytics
-				/*
-				metric1 - framerate
-				metric2 - particleCount
-				metric3 - fluidIterations
-				metric4 - fluidScale
-				metric5 - fluidArea
-				metric6 - clickCount
-				dimension1 - quality
-				dimension2 - texture_float_linear
-				dimension3 - texture_float
-				*/
 				//on pageview
 				untyped ga('send', 'pageview', {
 					  'dimension2':  Std.string(gl.getExtension('OES_texture_float_linear') != null),
@@ -171,17 +160,43 @@ class Main extends Application {
 
 				//dat.GUI
 				//create controls
-				var gui = new dat.GUI({closed: true});
+				var gui = new dat.GUI({autoPlace: true});
+				//particle count
+				var particleCountGUI = gui.add(particles, 'count').name('Particle Count').listen();
+				var particleCountInputEl = cast(untyped particleCountGUI.__input, js.html.InputElement);
+				particleCountGUI.__li.className = particleCountGUI.__li.className+' disabled';
+				particleCountInputEl.disabled = true;//	disable editing
+				//quality
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
 					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
 				}).name('Quality').listen();
-				// gui.add(this, 'renderFluidEnabled').name('Show Dye').listen();
+				//fluid iterations
 				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
+				//rest particles
 				gui.add({f:particles.reset}, 'f').name('Reset Particles');
+				//stop fluid
 				gui.add({f:fluid.clear}, 'f').name('Stop Fluid');
-				gui.add({f:function(){
+
+				//view source
+				var viewSourceGUI = gui.add({f:function(){
 					js.Browser.window.open('http://github.com/haxiomic/GPU-Fluid-Experiments', '_blank');
 				}}, 'f').name('View Source');
+				viewSourceGUI.__li.className = 'cr link footer';//remove any other classes
+				//	add github icon
+				var githubIconEl = js.Browser.document.createElement('span');
+				githubIconEl.className = 'icon-github';
+				githubIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
+				viewSourceGUI.domElement.parentElement.appendChild(githubIconEl);
+				//twitter
+				var twitterGUI = gui.add({f:function(){
+					js.Browser.window.open('http://twitter.com/haxiomic', '_blank');
+				}}, 'f').name('@haxiomic');
+				twitterGUI.__li.className = 'cr link footer';//remove any other classes
+				//	add twitter icon
+				var twitterIconEl = js.Browser.document.createElement('span');
+				twitterIconEl.className = 'icon-twitter';
+				twitterIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
+				twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
 				#end
 			default:
 				#if js

@@ -3,11 +3,15 @@ package dat;
 //see https://github.com/dataarts/dat.gui
 
 extern class GUI {
+	public var __gui:GUI;
+	public var __li:js.html.Element;
+	public var domElement:js.html.Element;
+
 	public function new(?params:Dynamic):Void;
-	@:overload(function(object:Dynamic, property:String, min:Float, max:Float):GUI{})
-	@:overload(function(object:Dynamic, property:String, ?args:Dynamic):GUI{})
-	public function add(object:Dynamic, property:String, ?args:Array<Dynamic>):GUI;
-	public function addColor(object:Dynamic, property:String):GUI;
+	@:overload(function(object:Dynamic, property:Dynamic, min:Float, max:Float):GUI{})
+	@:overload(function(object:Dynamic, property:Dynamic, ?args:Dynamic):GUI{})
+	public function add(object:Dynamic, property:Dynamic, ?args:Array<Dynamic>):GUI;
+	public function addColor(object:Dynamic, property:Dynamic):GUI;
 	public function remove(controller:Dynamic):GUI;
 	public function destroy():GUI;
 	public function addFolder(name:String):GUI;
