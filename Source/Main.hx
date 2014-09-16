@@ -27,7 +27,7 @@ class Main extends Application {
 	//Geometry
 	var textureQuad:GLBuffer = null; 
 	//Framebuffers
-	var screenBuffer:GLFramebuffer = null;	//null for all platforms exlcuding ios, where it references the defaultFramebuffer (UIStageView.mm)
+	var screenBuffer:GLFramebuffer = null;	//null for all platforms excluding ios, where it references the defaultFramebuffer (UIStageView.mm)
 	//Render Targets
 	var offScreenTarget:RenderTarget;
 	//Shaders
@@ -169,6 +169,7 @@ class Main extends Application {
 					});
 				}, 6000);
 
+				//dat.GUI
 				//create controls
 				var gui = new dat.GUI({closed: true});
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
