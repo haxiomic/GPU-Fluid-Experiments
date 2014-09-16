@@ -1286,10 +1286,8 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			},6000);
 			var gui = new dat.GUI({ autoPlace : true});
 			var particleCountGUI = gui.add(this.particles,"count").name("Particle Count").listen();
-			var particleCountInputEl;
-			particleCountInputEl = js.Boot.__cast(particleCountGUI.__input , HTMLInputElement);
 			particleCountGUI.__li.className = particleCountGUI.__li.className + " disabled";
-			particleCountInputEl.disabled = true;
+			particleCountGUI.__input.disabled = true;
 			gui.add(this,"simulationQuality",Type.allEnums(SimulationQuality)).onChange(function(v) {
 				window.location.href = StringTools.replace(window.location.href,window.location.search,"") + "?q=" + v;
 			}).name("Quality").listen();
@@ -1312,12 +1310,12 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			twitterGUI.__li.className = "cr link footer";
 			var twitterIconEl = window.document.createElement("span");
 			twitterIconEl.className = "icon-twitter";
-			twitterIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + "px";
+			twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + "px";
 			twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 205, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 204, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1440,7 +1438,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 348, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 347, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1453,7 +1451,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 368, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 367, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
