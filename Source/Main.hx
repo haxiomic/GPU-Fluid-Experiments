@@ -142,7 +142,7 @@ class Main extends Application {
 				metric3 - fluidIterations
 				metric4 - fluidScale
 				metric5 - fluidArea
-				metric6 - mouseClicks
+				metric6 - clickCount
 				dimension1 - quality
 				dimension2 - texture_float_linear
 				dimension3 - texture_float
@@ -152,13 +152,11 @@ class Main extends Application {
 					  'dimension2':  Std.string(gl.getExtension('OES_texture_float_linear') != null),
 					  'dimension3':  Std.string(gl.getExtension('OES_texture_float') != null)
 				});
-				var mouseClickCount = 0;
-				lime.ui.MouseEventManager.onMouseUp.add(function(x:Float, y:Float, button:Int){
-					mouseClickCount++;
-				});
+				
+				var clickCount = 0;
+				lime.ui.MouseEventManager.onMouseUp.add(function(x:Float, y:Float, button:Int) clickCount++);
 				//after a short time has elapsed
 				haxe.Timer.delay(function(){
-					trace('hallo world', mouseClickCount);
 					var fps = performanceMonitor.fpsAverage;
 					untyped ga('set', {
 						'metric1': Math.round(fps != null ? fps : 0),
@@ -166,7 +164,7 @@ class Main extends Application {
 						'metric3': fluidIterations,
 						'metric4': fluidScale,
 						'metric5': fluid.width * fluid.height,
-						'metric6': mouseClickCount,
+						'metric6': clickCount,
 						'dimension1': Type.enumConstructor(simulationQuality),
 					});
 				}, 6000);
