@@ -163,9 +163,8 @@ class Main extends Application {
 				var gui = new dat.GUI({autoPlace: true});
 				//particle count
 				var particleCountGUI = gui.add(particles, 'count').name('Particle Count').listen();
-				var particleCountInputEl = cast(untyped particleCountGUI.__input, js.html.InputElement);
 				particleCountGUI.__li.className = particleCountGUI.__li.className+' disabled';
-				particleCountInputEl.disabled = true;//	disable editing
+				untyped particleCountGUI.__input.disabled = true;//	disable editing
 				//quality
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
 					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
@@ -187,15 +186,15 @@ class Main extends Application {
 				githubIconEl.className = 'icon-github';
 				githubIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
 				viewSourceGUI.domElement.parentElement.appendChild(githubIconEl);
-				//twitter
+				// //twitter
 				var twitterGUI = gui.add({f:function(){
 					js.Browser.window.open('http://twitter.com/haxiomic', '_blank');
 				}}, 'f').name('@haxiomic');
 				twitterGUI.__li.className = 'cr link footer';//remove any other classes
-				//	add twitter icon
+				// //	add twitter icon
 				var twitterIconEl = js.Browser.document.createElement('span');
 				twitterIconEl.className = 'icon-twitter';
-				twitterIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
+				twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + 'px';
 				twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
 				#end
 			default:
