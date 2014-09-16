@@ -1,6 +1,5 @@
 package;
 
-import browsermonitor.BrowserMonitor;
 import gltoolbox.render.RenderTarget;
 import haxe.Timer;
 import lime.app.Application;
@@ -51,9 +50,6 @@ class Main extends Application {
 	var renderFluidEnabled:Bool = true;
 	//
 	var performanceMonitor:PerformanceMonitor;
-	#if js
-	var browserMonitor:BrowserMonitor = new BrowserMonitor('http://awestronomer.com/services/browser-monitor/', false);
-	#end
 	//Parameters
 	var particleCount:Int;
 	var fluidScale:Float;
@@ -91,22 +87,6 @@ class Main extends Application {
 				}
 			}
 		}
-
-		browserMonitor.onSendCallback = function(report:Dynamic){
-			//Add to report
-			Reflect.setField(report, 'averageFPS', Math.round(performanceMonitor.fpsAverage * 10)/10);
-			//simulations parameters
-			browserMonitor.userData.particleCount = particleCount;
-			browserMonitor.userData.fluidScale = fluidScale;
-			browserMonitor.userData.fluidIterations = fluidIterations;
-			browserMonitor.userData.quality = Type.enumConstructor(simulationQuality);
-			//record supported extensions
-			browserMonitor.userData.texture_float_linear = gl.getExtension('OES_texture_float_linear') != null;
-			browserMonitor.userData.texture_float = gl.getExtension('OES_texture_float') != null;
-		}
-
-		browserMonitor.sendReportAfterTime(8);
-
 		#end
 	}
 
@@ -155,6 +135,40 @@ class Main extends Application {
 				particles.dragCoefficient = 1;
 
 				#if js
+				//Google Analytics
+				/*
+				metric1 - framerate
+				metric2 - particleCount
+				metric3 - fluidIterations
+				metric4 - fluidScale
+				metric5 - fluidArea
+
+				dimension1 - quality
+				dimension2 - texture_float_linear
+				dimension3 - texture_float
+				*/
+				//on pageview
+				untyped{
+					ga('send', 'pageview', {
+					  'dimension2':  Std.string(gl.getExtension('OES_texture_float_linear') != null),
+					  'dimension3':  Std.string(gl.getExtension('OES_texture_float') != null)
+					});
+				}
+				//after a short time has elapsed
+				haxe.Timer.delay(function(){
+					untyped{
+						var fps = performanceMonitor.fpsAverage;
+						ga('set', {
+							'metric1': Math.round(fps != null ? fps : 0),
+							'metric2': particleCount,
+							'metric3': fluidIterations,
+							'metric4': fluidScale,
+							'metric5': fluid.width * fluid.height,
+							'dimension1': Type.enumConstructor(simulationQuality),
+						});
+					}
+				}, 1000);
+
 				//create controls
 				var gui = new dat.GUI({closed: true});
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
