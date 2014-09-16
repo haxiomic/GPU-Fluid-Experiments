@@ -1,8 +1,10 @@
 #Cross-platform GPU fluid simulation
 ----
-Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid simulation in OpenGL ES
+Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid simulation in OpenGL ES. 
 
 ###[Demo](http://haxiomic.github.io/GPU-Fluid-Experiments/html5/)
+
+(Rigid body integration is still in the works)
 
 ####Todo
 - Switch to MAC (staggerd) grid
