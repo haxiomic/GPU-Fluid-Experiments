@@ -36,7 +36,7 @@ class Main extends Application {
 	var updateDyeShader       : MouseDye;
 	var mouseForceShader      : MouseForce;
 	//Window
-	var isMouseDown:Bool = false;
+	var isMouseDown:Bool = true;
 	var mousePointKnown:Bool = false;
 	var lastMousePointKnown:Bool = false;
 	var mouse = new Vector2();
