@@ -19,7 +19,7 @@ ApplicationMain.create = function() {
 	ApplicationMain.preloader.load(urls,types);
 };
 ApplicationMain.main = function() {
-	ApplicationMain.config = { antialiasing : 0, background : 16777215, borderless : false, depthBuffer : false, fps : 0, fullscreen : false, height : 0, orientation : "", resizable : true, stencilBuffer : false, title : "GLFluid", vsync : true, width : 0};
+	ApplicationMain.config = { antialiasing : 0, background : 16777215, borderless : false, depthBuffer : false, fps : 0, fullscreen : false, height : 0, orientation : "", resizable : true, stencilBuffer : false, title : "WebGL Fluid Experiment", vsync : true, width : 0};
 };
 ApplicationMain.start = function() {
 	ApplicationMain.app = new Main();
@@ -1220,7 +1220,7 @@ var Main = function() {
 	this.mouse = new lime.math.Vector2();
 	this.lastMousePointKnown = false;
 	this.mousePointKnown = false;
-	this.isMouseDown = false;
+	this.isMouseDown = true;
 	this.screenBuffer = null;
 	this.textureQuad = null;
 	lime.app.Application.call(this);
