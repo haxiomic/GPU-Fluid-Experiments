@@ -1,4 +1,6 @@
 NOTES:
+	! avoid normalizing 0 vectors / any cases of bad math, even if the algo avoids them, they case problems on some machines http://www.reddit.com/r/InternetIsBeautiful/comments/2gkunq/fluid_and_particles_in_webgl/ckk3jrp
+	
 	- Texture lookups outside function void main() are not standard - this caused issues on many GPUs!
 
 TODO:
