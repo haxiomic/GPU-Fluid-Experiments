@@ -185,21 +185,6 @@ DefaultAssetLibrary.prototype = $extend(lime.AssetLibrary.prototype,{
 	}
 	,__class__: DefaultAssetLibrary
 });
-var EReg = function(r,opt) {
-	opt = opt.split("u").join("");
-	this.r = new RegExp(r,opt);
-};
-$hxClasses["EReg"] = EReg;
-EReg.__name__ = true;
-EReg.prototype = {
-	match: function(s) {
-		if(this.r.global) this.r.lastIndex = 0;
-		this.r.m = this.r.exec(s);
-		this.r.s = s;
-		return this.r.m != null;
-	}
-	,__class__: EReg
-};
 var GPUFluid = function(gl,width,height,cellSize,solverIterations) {
 	if(solverIterations == null) solverIterations = 18;
 	if(cellSize == null) cellSize = 8;
@@ -1227,7 +1212,6 @@ lime.app.Application.prototype = $extend(lime.app.Module.prototype,{
 });
 var Main = function() {
 	this.qualityDirection = 0;
-	this.browserMonitor = new browsermonitor.BrowserMonitor("http://awestronomer.com/services/browser-monitor/",false);
 	this.renderFluidEnabled = true;
 	this.renderParticlesEnabled = true;
 	this.lastMouseClipSpace = new lime.math.Vector2();
@@ -1239,7 +1223,6 @@ var Main = function() {
 	this.isMouseDown = false;
 	this.screenBuffer = null;
 	this.textureQuad = null;
-	var _g = this;
 	lime.app.Application.call(this);
 	this.performanceMonitor = new PerformanceMonitor(30,null,2000);
 	this.set_simulationQuality(SimulationQuality.Medium);
@@ -1247,11 +1230,11 @@ var Main = function() {
 	var urlParams = js.Web.getParams();
 	if(urlParams.exists("q")) {
 		var q = StringTools.trim(urlParams.get("q").toLowerCase());
-		var _g1 = 0;
-		var _g11 = Type.allEnums(SimulationQuality);
-		while(_g1 < _g11.length) {
-			var e = _g11[_g1];
-			++_g1;
+		var _g = 0;
+		var _g1 = Type.allEnums(SimulationQuality);
+		while(_g < _g1.length) {
+			var e = _g1[_g];
+			++_g;
 			var name = e[0].toLowerCase();
 			if(q == name) {
 				this.set_simulationQuality(e);
@@ -1260,16 +1243,6 @@ var Main = function() {
 			}
 		}
 	}
-	this.browserMonitor.onSendCallback = function(report) {
-		Reflect.setField(report,"averageFPS",Math.round(_g.performanceMonitor.fpsSample.average * 10) / 10);
-		_g.browserMonitor.userData.particleCount = _g.particleCount;
-		_g.browserMonitor.userData.fluidScale = _g.fluidScale;
-		_g.browserMonitor.userData.fluidIterations = _g.fluidIterations;
-		_g.browserMonitor.userData.quality = _g.simulationQuality[0];
-		_g.browserMonitor.userData.texture_float_linear = _g.gl.getExtension("OES_texture_float_linear") != null;
-		_g.browserMonitor.userData.texture_float = _g.gl.getExtension("OES_texture_float") != null;
-	};
-	this.browserMonitor.sendReportAfterTime(8);
 };
 $hxClasses["Main"] = Main;
 Main.__name__ = true;
@@ -1302,6 +1275,11 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.particles.set_flowScaleX(this.fluid.simToClipSpaceX(1));
 			this.particles.set_flowScaleY(this.fluid.simToClipSpaceY(1));
 			this.particles.stepParticlesShader.dragCoefficient.set_data(1);
+			ga("send","pageview",{ dimension2 : Std.string(gl.getExtension("OES_texture_float_linear") != null), dimension3 : Std.string(gl.getExtension("OES_texture_float") != null)});
+			haxe.Timer.delay(function() {
+				var fps = _g.performanceMonitor.fpsSample.average;
+				ga("set",{ metric1 : Math.round(fps != null?fps:0), metric2 : _g.particleCount, metric3 : _g.fluidIterations, metric4 : _g.fluidScale, metric5 : _g.fluid.width * _g.fluid.height, dimension1 : _g.simulationQuality[0]});
+			},1000);
 			var gui = new dat.GUI({ closed : true});
 			gui.add(this,"simulationQuality",Type.allEnums(SimulationQuality)).onChange(function(v) {
 				window.location.href = StringTools.replace(window.location.href,window.location.search,"") + "?q=" + v;
@@ -1317,7 +1295,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 175, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 189, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1440,7 +1418,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 318, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 332, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1453,7 +1431,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 338, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 352, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1863,95 +1841,6 @@ Type.getEnumConstructs = function(e) {
 };
 Type.allEnums = function(e) {
 	return e.__empty_constructs__;
-};
-var browsermonitor = {};
-browsermonitor.BrowserMonitor = function(serverURL,recordConsoleOutput,onSendCallback) {
-	if(recordConsoleOutput == null) recordConsoleOutput = false;
-	this.recordConsoleOutput = false;
-	this.userData = { };
-	this.mouseClicks = 0;
-	var _g = this;
-	this.serverURL = serverURL;
-	this.recordConsoleOutput = recordConsoleOutput;
-	this.onSendCallback = onSendCallback;
-	this.userAgent = window.navigator.userAgent;
-	this.browserName = eval("\n\t\t\t(function(){\n\t\t\t    var ua= navigator.userAgent, tem, \n\t\t\t    M= ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\\/))\\/?\\s*(\\d+)/i) || [];\n\t\t\t    if(/trident/i.test(M[1])){\n\t\t\t        tem=  /\\brv[ :]+(\\d+)/g.exec(ua) || [];\n\t\t\t        return 'IE '+(tem[1] || '');\n\t\t\t    }\n\t\t\t    if(M[1]=== 'Chrome'){\n\t\t\t        tem= ua.match(/\\bOPR\\/(\\d+)/)\n\t\t\t        if(tem!= null) return 'Opera '+tem[1];\n\t\t\t    }\n\t\t\t    M= M[2]? [M[1], M[2]]: [navigator.appName, navigator.appVersion, '-?'];\n\t\t\t    if((tem= ua.match(/version\\/(\\d+)/i))!= null) M.splice(1, 1, tem[1]);\n\t\t\t    return M.join(' ');\n\t\t\t})();\n\t\t");
-	this.windowWidth = window.innerWidth;
-	this.windowHeight = window.innerHeight;
-	lime.ui.MouseEventManager.onMouseUp.add(function(x,y,button) {
-		_g.mouseClicks++;
-	});
-	if(recordConsoleOutput) {
-		this.consoleLog = new Array();
-		this.consoleError = new Array();
-		this.consoleWarn = new Array();
-		(function() {
-			var oldLog = console.log;
-			var oldError = console.error;
-			var oldWarn = console.warn;
-			console.log = function(message) {
-				_g.consoleLog.push(message);
-				oldLog.apply(console,eval("arguments"));
-			};
-			console.error = function(message1) {
-				oldError.push(message1);
-				oldError.apply(console,eval("arguments"));
-			};
-			console.warn = function(message2) {
-				oldWarn.push(message2);
-				oldWarn.apply(console,eval("arguments"));
-			};
-		})();
-	}
-	this.startTime = haxe.Timer.stamp();
-};
-$hxClasses["browsermonitor.BrowserMonitor"] = browsermonitor.BrowserMonitor;
-browsermonitor.BrowserMonitor.__name__ = true;
-browsermonitor.BrowserMonitor.prototype = {
-	sendReportAfterTime: function(seconds) {
-		var _g = this;
-		haxe.Timer.delay(function() {
-			_g.sendReport();
-		},seconds * 1000);
-	}
-	,sendReportOnExit: function(timeout_ms) {
-		if(timeout_ms == null) timeout_ms = 500;
-		var _g = this;
-		window.onbeforeunload = function(e) {
-			var timeOnPage = haxe.Timer.stamp() - _g.startTime;
-			var report = _g.createReportJSON();
-			report.timeOnPage = timeOnPage;
-			_g.sendReport(report,false,timeout_ms);
-		};
-	}
-	,sendReport: function(report,async,timeout_ms) {
-		if(async == null) async = true;
-		if(this.serverURL == null) return;
-		if(report == null) report = this.createReportJSON();
-		if(Reflect.isFunction(this.onSendCallback)) this.onSendCallback(report);
-		var request = new XMLHttpRequest();
-		request.open("POST",this.serverURL,async);
-		request.setRequestHeader("Content-Type","application/x-www-form-urlencoded; charset=UTF-8");
-		request.send(JSON.stringify(report));
-		if(timeout_ms != null) haxe.Timer.delay(function() {
-			request.abort();
-		},timeout_ms);
-	}
-	,isSafari: function() {
-		return new EReg("Safari","i").match(this.browserName);
-	}
-	,isChrome: function() {
-		return new EReg("Chrome","i").match(this.browserName);
-	}
-	,isFirefox: function() {
-		return new EReg("Firefox","i").match(this.browserName);
-	}
-	,createReportJSON: function() {
-		var json = { browserName : this.browserName, userAgent : this.userAgent, windowWidth : this.windowWidth, windowHeight : this.windowHeight, mouseClicks : this.mouseClicks, userData : this.userData};
-		if(this.recordConsoleOutput) json.console = { log : this.consoleLog, error : this.consoleError, warn : this.consoleWarn};
-		return json;
-	}
-	,__class__: browsermonitor.BrowserMonitor
 };
 var gltoolbox = {};
 gltoolbox.GeometryTools = function() { };
