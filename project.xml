@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project>
 	
-	<meta title="GLFluid" package="com.haxiomic.glfluid" version="1.0.0" company="Haxiomic" />
+	<meta title="GPU Fluid Experiment" package="com.haxiomic.glfluid" version="1.0.0" company="Haxiomic" />
+	<meta title="WebGL Fluid Experiment" if="html5" />
 	<app main="Main" path="Export" file="GLFluid" />
 
 	<!-- <window width="2560" height="1400"/> -->

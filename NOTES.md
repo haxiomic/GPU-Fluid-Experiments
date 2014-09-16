@@ -2,6 +2,7 @@ NOTES:
 	- Texture lookups outside function void main() are not standard - this caused issues on many GPUs!
 
 TODO:
+	- gh-pages README.md & index.html introduction
 	- Shaderblox: Precision
 				  Defines
 				  Super functions
