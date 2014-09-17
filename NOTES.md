@@ -1,4 +1,9 @@
 NOTES:
+	- Editable particle count - use url params and reload to avoid texture allocation issue?
+		-> let u/CaptainObliviousity and u/8lbIceBag know when complete
+
+	- Tell jdonaldson when write up is complete
+
 	! avoid normalizing 0 vectors / any cases of bad math, even if the algo avoids them, they case problems on some machines http://www.reddit.com/r/InternetIsBeautiful/comments/2gkunq/fluid_and_particles_in_webgl/ckk3jrp
 	
 	- Texture lookups outside function void main() are not standard - this caused issues on many GPUs!
@@ -28,5 +33,5 @@ TODO:
 
 BUGS in Other Things:
 	- Chrome, if missing OES_texture_float_linear, chrome errors incorrectly missing OES_float_linear
-	- Haxe Map.set should return the item set
+	- Haxe Map.set should return the item set?
 	- haxe.Timer.delay not working on c++?

@@ -5,7 +5,6 @@
 	<meta title="WebGL Fluid Experiment" if="html5" />
 	<app main="Main" path="Export" file="GLFluid" />
 
-	<!-- <window width="2560" height="1400"/> -->
 	<window hardware="true" allow-shaders="true" require-shaders="true" depth-buffer="false" stencil-buffer="false" />
 	<window fullscreen="false" resizable="true" borderless="false" vsync="true" />
 	<window fps="120" unless="html5"/>
@@ -16,7 +15,6 @@
 	<haxelib name="lime" />
 	<haxelib name="shaderblox" />
 	<haxelib name="gltoolbox" />
-	<haxelib name="browsermonitor" />
 
 	<template path="Templates" />
 
