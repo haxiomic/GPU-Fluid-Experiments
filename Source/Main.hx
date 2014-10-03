@@ -90,7 +90,7 @@ class Main extends Application {
 		#end
 	}
 
-	public override function init (context:RenderContext):Void {
+	override function init (context:RenderContext):Void {
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
@@ -102,16 +102,16 @@ class Main extends Application {
 				#if ios //grab default screenbuffer
 				screenBuffer = new GLFramebuffer(gl.version, gl.getParameter(gl.FRAMEBUFFER_BINDING));
 				#end
-				textureQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, 1, 1);
+				textureQuad = gltoolbox.GeometryTools.createQuad(0, 0, 1, 1);
 
-				offScreenTarget = new RenderTarget(gl, 
-					gltoolbox.TextureTools.customTextureFactory(
+				offScreenTarget = new RenderTarget(
+					Math.round(window.width*offScreenScale),
+					Math.round(window.height*offScreenScale),
+					gltoolbox.TextureTools.createTextureFactory(
 						gl.RGBA,
 						gl.UNSIGNED_BYTE,
 						gl.NEAREST
-					),
-					Math.round(window.width*offScreenScale),
-					Math.round(window.height*offScreenScale)
+					)
 				);
 
 				screenTextureShader = new ScreenTexture();
@@ -186,12 +186,12 @@ class Main extends Application {
 				githubIconEl.className = 'icon-github';
 				githubIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
 				viewSourceGUI.domElement.parentElement.appendChild(githubIconEl);
-				// //twitter
+				//twitter
 				var twitterGUI = gui.add({f:function(){
 					js.Browser.window.open('http://twitter.com/haxiomic', '_blank');
 				}}, 'f').name('@haxiomic');
 				twitterGUI.__li.className = 'cr link footer';//remove any other classes
-				// //	add twitter icon
+				//	add twitter icon
 				var twitterIconEl = js.Browser.document.createElement('span');
 				twitterIconEl.className = 'icon-twitter';
 				twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + 'px';
@@ -207,7 +207,7 @@ class Main extends Application {
 		lastTime = haxe.Timer.stamp();
 	}
 
-	public override function render (context:RenderContext):Void {
+	override function render (context:RenderContext):Void {
 		time = haxe.Timer.stamp();
 		var dt = time - lastTime; //60fps ~ 0.016
 		lastTime = time;

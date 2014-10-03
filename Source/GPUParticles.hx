@@ -39,7 +39,7 @@ class GPUParticles{
 		#end
 
 		//quad for writing to textures
-		textureQuad = GeometryTools.getCachedTextureQuad(gl);
+		textureQuad = GeometryTools.getCachedTextureQuad();
 
 		//create shaders
 		inititalConditionsShader = new InitialConditions();
@@ -79,7 +79,7 @@ class GPUParticles{
 		if(this.particleData != null){
 			this.particleData.resize(dataWidth, dataHeight);
 		}else{
-			this.particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.floatTextureFactoryRGBA, dataWidth, dataHeight);
+			this.particleData = new RenderTarget2Phase(dataWidth, dataHeight, gltoolbox.TextureTools.floatTextureFactoryRGBA);
 		}
 
 		

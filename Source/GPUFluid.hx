@@ -56,22 +56,22 @@ class GPUFluid{
 
 		//geometry
 		//	inner quad, for main fluid shaders
-		textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
+		textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad();
 
 		//create texture
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
-		var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
+		var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
 
-		velocityRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
-		pressureRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
-		divergenceRenderTarget = new RenderTarget(gl, nearestFactory, width, height);
-		dyeRenderTarget = new RenderTarget2Phase(gl, 
-			gltoolbox.TextureTools.customTextureFactory(
+		velocityRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
+		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
+		divergenceRenderTarget = new RenderTarget(width, height, nearestFactory);
+		dyeRenderTarget = new RenderTarget2Phase(
+			width,
+			height,
+			gltoolbox.TextureTools.createTextureFactory(
 				gl.RGB, gl.FLOAT, 
 				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
-			),
-			width,
-			height
+			)
 		);
 
 		//texel-space parameters

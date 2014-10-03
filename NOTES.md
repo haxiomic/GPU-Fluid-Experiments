@@ -35,3 +35,4 @@ BUGS in Other Things:
 	- Chrome, if missing OES_texture_float_linear, chrome errors incorrectly missing OES_float_linear
 	- Haxe Map.set should return the item set?
 	- haxe.Timer.delay not working on c++?
+	- Type.createInstance - why is there an argument limit??? There's no reason for there to be one.
