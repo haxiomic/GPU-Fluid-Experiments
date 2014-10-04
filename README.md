@@ -13,7 +13,7 @@ Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid 
 - Establish efficient pipeline for reading forces to CPU (via glReadPixels)
 
 ####Requires:
-- [snow](https://github.com/underscorediscovery/snow) ♥
+- [snow](https://github.com/underscorediscovery/snow) ♥♥
 - [gltoolbox](http://github.com/haxiomic/gltoolbox)
 - [my fork of shaderblox](http://github.com/haxiomic/shaderblox) (by [Sunjammer](https://github.com/Sunjammer))
 - [Haxe 3.1.3](http://haxe.org/)
