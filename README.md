@@ -1,6 +1,6 @@
 #Cross-platform GPU fluid simulation
 ----
-Using snow instead of lime, **make sure you use my fork of shaderblox and the latest gltoolbox**
+Using [snow](http://snowkit.org/) instead of lime, **make sure you use my fork of shaderblox and the latest gltoolbox**
 
 Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid simulation in OpenGL ES. 
 
