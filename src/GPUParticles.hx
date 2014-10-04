@@ -1,16 +1,16 @@
 package;
 
+import snow.render.opengl.GL;
+import snow.utils.Float32Array;
+
 import gltoolbox.GeometryTools;
 import gltoolbox.render.RenderTarget2Phase;
-import lime.graphics.GLRenderContext;
-import lime.graphics.opengl.GLBuffer;
-import lime.graphics.opengl.GLTexture;
-import lime.math.Vector2;
-import lime.utils.Float32Array;
 import shaderblox.ShaderBase;
 
+import Main.Vector2;
+
 class GPUParticles{
-	var gl:GLRenderContext;
+	var gl = GL;
 
 	public var particleData:RenderTarget2Phase;
 	public var particleUVs:GLBuffer;
@@ -28,9 +28,7 @@ class GPUParticles{
 
 	var textureQuad:GLBuffer;
 
-	public function new(gl:GLRenderContext, count:Int = 524288){
-		this.gl = gl;
-
+	public function new(count:Int = 524288){
 		#if js //load floating point texture extension
 		gl.getExtension('OES_texture_float');
 		#end
@@ -39,7 +37,7 @@ class GPUParticles{
 		#end
 
 		//quad for writing to textures
-		textureQuad = GeometryTools.getCachedTextureQuad(gl);
+		textureQuad = GeometryTools.getCachedTextureQuad();
 
 		//create shaders
 		inititalConditionsShader = new InitialConditions();
@@ -79,7 +77,7 @@ class GPUParticles{
 		if(this.particleData != null){
 			this.particleData.resize(dataWidth, dataHeight);
 		}else{
-			this.particleData = new RenderTarget2Phase(gl, gltoolbox.TextureTools.floatTextureFactoryRGBA, dataWidth, dataHeight);
+			this.particleData = new RenderTarget2Phase(dataWidth, dataHeight, gltoolbox.TextureTools.floatTextureFactoryRGBA);
 		}
 
 		

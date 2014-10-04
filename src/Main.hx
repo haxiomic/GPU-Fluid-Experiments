@@ -1,26 +1,19 @@
 package;
 
-import gltoolbox.render.RenderTarget;
 import haxe.Timer;
-import lime.app.Application;
-import lime.graphics.opengl.*;
-import lime.graphics.GLRenderContext;
-import lime.graphics.RenderContext;
-import lime.math.Vector2;
-import lime.ui.KeyCode;
-import lime.utils.Float32Array;
+
+import snow.render.opengl.GL;
+import snow.input.Input;
+import snow.types.Types;
+import snow.utils.Float32Array;
+import snow.window.Window;
+import snow.App;
+
+import gltoolbox.render.RenderTarget;
 import shaderblox.ShaderBase;
 
-enum SimulationQuality{
-	UltraHigh;
-	High;
-	Medium;
-	Low;
-	UltraLow;
-}
-
-class Main extends Application {
-	var gl:GLRenderContext;
+class Main extends App {
+	var gl = GL;
 	//Simulations
 	var fluid:GPUFluid;
 	var particles:GPUParticles;
@@ -57,6 +50,8 @@ class Main extends Application {
 	var offScreenScale:Float;
 	var simulationQuality(default, set):SimulationQuality;
 
+	var window:Window;
+
 	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
 	
 	public function new () {
@@ -68,7 +63,10 @@ class Main extends Application {
 
 		#if desktop
 		simulationQuality = UltraHigh;
+		#elseif ios
+		simulationQuality = UltraLow;
 		#end
+
 
 		#if js
 		performanceMonitor.fpsTooLowCallback = lowerQualityRequired; //auto adjust quality
@@ -90,124 +88,127 @@ class Main extends Application {
 		#end
 	}
 
-	public override function init (context:RenderContext):Void {
-		switch (context) {
-			case OPENGL (gl):
-				this.gl = gl;
+	override function config( config:AppConfig ) : AppConfig {
+	    return config;
+	}
 
-				gl.disable(gl.DEPTH_TEST);
-				gl.disable(gl.CULL_FACE);
-				gl.disable(gl.DITHER);
+	override function ready(){
+		this.window = app.window;
+        this.window.onrender = render;
+		init();
+	}
 
-				#if ios //grab default screenbuffer
-				screenBuffer = new GLFramebuffer(gl.version, gl.getParameter(gl.FRAMEBUFFER_BINDING));
-				#end
-				textureQuad = gltoolbox.GeometryTools.createQuad(gl, 0, 0, 1, 1);
+	function init():Void {
+		trace("MAX_VERTEX_TEXTURE_IMAGE_UNITS:"+gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS));
 
-				offScreenTarget = new RenderTarget(gl, 
-					gltoolbox.TextureTools.customTextureFactory(
-						gl.RGBA,
-						gl.UNSIGNED_BYTE,
-						gl.NEAREST
-					),
-					Math.round(window.width*offScreenScale),
-					Math.round(window.height*offScreenScale)
-				);
+		gl.disable(gl.DEPTH_TEST);
+		gl.disable(gl.CULL_FACE);
+		gl.disable(gl.DITHER);
 
-				screenTextureShader = new ScreenTexture();
-				renderParticlesShader = new ColorParticleMotion();
-				updateDyeShader = new MouseDye();
-				mouseForceShader = new MouseForce();
+        #if ios screenBuffer = GL.getParameter(GL.FRAMEBUFFER_BINDING); #end
 
-				updateDyeShader.mouseClipSpace.data = mouseClipSpace;
-				updateDyeShader.lastMouseClipSpace.data = lastMouseClipSpace;
-				mouseForceShader.mouseClipSpace.data = mouseClipSpace;
-				mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
+		textureQuad = gltoolbox.GeometryTools.createQuad(0, 0, 1, 1);
 
-				var cellScale = 32;
-				fluid = new GPUFluid(gl, Math.round(window.width*fluidScale), Math.round(window.height*fluidScale), cellScale, fluidIterations);
-				fluid.updateDyeShader = updateDyeShader;
-				fluid.applyForcesShader = mouseForceShader;
+		offScreenTarget = new RenderTarget(
+			Math.round(window.width*offScreenScale),
+			Math.round(window.height*offScreenScale),
+			gltoolbox.TextureTools.createTextureFactory(
+				gl.RGBA,
+				gl.UNSIGNED_BYTE,
+				gl.NEAREST
+			)
+		);
 
-				particles = new GPUParticles(gl, particleCount);
-				particles.flowScaleX = fluid.simToClipSpaceX(1);
-				particles.flowScaleY = fluid.simToClipSpaceY(1);
-				particles.dragCoefficient = 1;
+		screenTextureShader = new ScreenTexture();
+		renderParticlesShader = new ColorParticleMotion();
+		updateDyeShader = new MouseDye();
+		mouseForceShader = new MouseForce();
 
-				#if js
-				//Google Analytics
-				//on pageview
-				untyped ga('send', 'pageview', {
-					  'dimension2':  Std.string(gl.getExtension('OES_texture_float_linear') != null),
-					  'dimension3':  Std.string(gl.getExtension('OES_texture_float') != null)
-				});
-				
-				var clickCount = 0;
-				lime.ui.MouseEventManager.onMouseUp.add(function(x:Float, y:Float, button:Int) clickCount++);
-				//after a short time has elapsed
-				haxe.Timer.delay(function(){
-					var fps = performanceMonitor.fpsAverage;
-					untyped ga('set', {
-						'metric1': Math.round(fps != null ? fps : 0),
-						'metric2': particleCount,
-						'metric3': fluidIterations,
-						'metric4': fluidScale,
-						'metric5': fluid.width * fluid.height,
-						'metric6': clickCount,
-						'dimension1': Type.enumConstructor(simulationQuality),
-					});
-				}, 6000);
+		updateDyeShader.mouseClipSpace.data = mouseClipSpace;
+		updateDyeShader.lastMouseClipSpace.data = lastMouseClipSpace;
+		mouseForceShader.mouseClipSpace.data = mouseClipSpace;
+		mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
 
-				//dat.GUI
-				//create controls
-				var gui = new dat.GUI({autoPlace: true});
-				//particle count
-				var particleCountGUI = gui.add(particles, 'count').name('Particle Count').listen();
-				particleCountGUI.__li.className = particleCountGUI.__li.className+' disabled';
-				untyped particleCountGUI.__input.disabled = true;//	disable editing
-				//quality
-				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
-					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
-				}).name('Quality').listen();
-				//fluid iterations
-				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
-				//rest particles
-				gui.add({f:particles.reset}, 'f').name('Reset Particles');
-				//stop fluid
-				gui.add({f:fluid.clear}, 'f').name('Stop Fluid');
+		var cellScale = 32;
+		fluid = new GPUFluid(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale), cellScale, fluidIterations);
+		fluid.updateDyeShader = updateDyeShader;
+		fluid.applyForcesShader = mouseForceShader;
 
-				//view source
-				var viewSourceGUI = gui.add({f:function(){
-					js.Browser.window.open('http://github.com/haxiomic/GPU-Fluid-Experiments', '_blank');
-				}}, 'f').name('View Source');
-				viewSourceGUI.__li.className = 'cr link footer';//remove any other classes
-				//	add github icon
-				var githubIconEl = js.Browser.document.createElement('span');
-				githubIconEl.className = 'icon-github';
-				githubIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
-				viewSourceGUI.domElement.parentElement.appendChild(githubIconEl);
-				// //twitter
-				var twitterGUI = gui.add({f:function(){
-					js.Browser.window.open('http://twitter.com/haxiomic', '_blank');
-				}}, 'f').name('@haxiomic');
-				twitterGUI.__li.className = 'cr link footer';//remove any other classes
-				// //	add twitter icon
-				var twitterIconEl = js.Browser.document.createElement('span');
-				twitterIconEl.className = 'icon-twitter';
-				twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + 'px';
-				twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
-				#end
-			default:
-				#if js
-					js.Lib.alert('WebGL is not supported');
-				#end
-				trace('RenderContext \'$context\' not supported');
-		}
+		particles = new GPUParticles(particleCount);
+		particles.flowScaleX = fluid.simToClipSpaceX(1);
+		particles.flowScaleY = fluid.simToClipSpaceY(1);
+		particles.dragCoefficient = 1;
+
+		#if js
+		/*
+		//Google Analytics
+		//on pageview
+		untyped ga('send', 'pageview', {
+			  'dimension2':  Std.string(gl.getExtension('OES_texture_float_linear') != null),
+			  'dimension3':  Std.string(gl.getExtension('OES_texture_float') != null)
+		});
+		
+		var clickCount = 0;
+		lime.ui.MouseEventManager.onMouseUp.add(function(x:Float, y:Float, button:Int) clickCount++);
+		//after a short time has elapsed
+		haxe.Timer.delay(function(){
+			var fps = performanceMonitor.fpsAverage;
+			untyped ga('set', {
+				'metric1': Math.round(fps != null ? fps : 0),
+				'metric2': particleCount,
+				'metric3': fluidIterations,
+				'metric4': fluidScale,
+				'metric5': fluid.width * fluid.height,
+				'metric6': clickCount,
+				'dimension1': Type.enumConstructor(simulationQuality),
+			});
+		}, 6000);
+
+		//dat.GUI
+		//create controls
+		var gui = new dat.GUI({autoPlace: true});
+		//particle count
+		var particleCountGUI = gui.add(particles, 'count').name('Particle Count').listen();
+		particleCountGUI.__li.className = particleCountGUI.__li.className+' disabled';
+		untyped particleCountGUI.__input.disabled = true;//	disable editing
+		//quality
+		gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
+			js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
+		}).name('Quality').listen();
+		//fluid iterations
+		gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
+		//rest particles
+		gui.add({f:particles.reset}, 'f').name('Reset Particles');
+		//stop fluid
+		gui.add({f:fluid.clear}, 'f').name('Stop Fluid');
+
+		//view source
+		var viewSourceGUI = gui.add({f:function(){
+			js.Browser.window.open('http://github.com/haxiomic/GPU-Fluid-Experiments', '_blank');
+		}}, 'f').name('View Source');
+		viewSourceGUI.__li.className = 'cr link footer';//remove any other classes
+		//	add github icon
+		var githubIconEl = js.Browser.document.createElement('span');
+		githubIconEl.className = 'icon-github';
+		githubIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
+		viewSourceGUI.domElement.parentElement.appendChild(githubIconEl);
+		// //twitter
+		var twitterGUI = gui.add({f:function(){
+			js.Browser.window.open('http://twitter.com/haxiomic', '_blank');
+		}}, 'f').name('@haxiomic');
+		twitterGUI.__li.className = 'cr link footer';//remove any other classes
+		// //	add twitter icon
+		var twitterIconEl = js.Browser.document.createElement('span');
+		twitterIconEl.className = 'icon-twitter';
+		twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + 'px';
+		twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
+		*/
+		#end
 
 		lastTime = haxe.Timer.stamp();
 	}
 
-	public override function render (context:RenderContext):Void {
+	function render (?w:snow.window.Window):Void {
 		time = haxe.Timer.stamp();
 		var dt = time - lastTime; //60fps ~ 0.016
 		lastTime = time;
@@ -381,48 +382,75 @@ class Main extends Application {
 	inline function windowToClipSpaceX(x:Float)return (x/window.width)*2 - 1;
 	inline function windowToClipSpaceY(y:Float)return ((window.height-y)/window.height)*2 - 1;
 
-	override function onMouseDown( x : Float , y : Float , button : Int ){
+	override function onmousedown( x : Float , y : Float , button : Int, _, _){
 		this.isMouseDown = true; 
 	}
-	override function onMouseUp( x : Float , y : Float , button : Int ){
+	override function onmouseup( x : Float , y : Float , button : Int, _, _){
 		this.isMouseDown = false;
 	}
 
-	override function onMouseMove( x : Float , y : Float , button : Int ) {
-		mouse.setTo(x, y);
-		mouseClipSpace.setTo(
+	override function onmousemove( x : Float , y : Float , xrel:Int, yrel:Int, _, _) {
+		mouse.set(x, y);
+		mouseClipSpace.set(
 			windowToClipSpaceX(x),
 			windowToClipSpaceY(y)
 		);
 		mousePointKnown = true;
 	}
 
+	override function ontouchdown(_,_,_,_){
+		this.isMouseDown = true; 
+	}
+
+	override function ontouchup(_,_,_,_){
+		this.isMouseDown = false; 
+	}
+
+	override function ontouchmove(x,y,_,_,_,_){
+		mouse.set(x, y);
+		mouseClipSpace.set(
+			windowToClipSpaceX(x),
+			windowToClipSpaceY(y)
+		);
+		mousePointKnown = true;
+	}
+
+
 	inline function updateLastMouse(){
-		lastMouse.setTo(mouse.x, mouse.y);
-		lastMouseClipSpace.setTo(
+		lastMouse.set(mouse.x, mouse.y);
+		lastMouseClipSpace.set(
 			windowToClipSpaceX(mouse.x),
 			windowToClipSpaceY(mouse.y)
 		);
 		lastMousePointKnown = true && mousePointKnown;
 	}
 
-	override function onKeyUp( keyCode : Int , modifier : Int ){
+	override function onkeyup( keyCode : Int , _, _, _, _, _){
 		switch (keyCode) {
-			case KeyCode.R:
+			case Key.key_r:
 				reset();
-			case KeyCode.P:
+			case Key.key_p:
 				renderParticlesEnabled = !renderParticlesEnabled;
-			case KeyCode.D:
+			case Key.key_d:
 				renderFluidEnabled = !renderFluidEnabled;
-			case KeyCode.S:
+			case Key.key_s:
 				fluid.clear();
 		}
 	}
 }
 
+typedef Vector2 = shaderblox.uniforms.UVec2.Vector2;
 
-@:vert('#pragma include("Source/shaders/glsl/no-transform.vert")')
-@:frag('#pragma include("Source/shaders/glsl/quad-texture.frag")')
+enum SimulationQuality{
+	UltraHigh;
+	High;
+	Medium;
+	Low;
+	UltraLow;
+}
+
+@:vert('#pragma include("src/shaders/glsl/no-transform.vert")')
+@:frag('#pragma include("src/shaders/glsl/quad-texture.frag")')
 class ScreenTexture extends ShaderBase {}
 
 @:vert('
@@ -443,7 +471,7 @@ class ScreenTexture extends ShaderBase {}
 class ColorParticleMotion extends GPUParticles.RenderParticles{}
 
 @:frag('
-	#pragma include("Source/shaders/glsl/geom.glsl")
+	#pragma include("src/shaders/glsl/geom.glsl")
 
 	uniform bool isMouseDown;
 	uniform vec2 mouseClipSpace;
@@ -483,7 +511,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 class MouseDye extends GPUFluid.UpdateDye{}
 
 @:frag('
-	#pragma include("Source/shaders/glsl/geom.glsl")
+	#pragma include("src/shaders/glsl/geom.glsl")
 
 	uniform bool isMouseDown;
 	uniform vec2 mouseClipSpace;

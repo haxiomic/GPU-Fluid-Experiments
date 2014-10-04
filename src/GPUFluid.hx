@@ -1,16 +1,16 @@
 package;
 
+import snow.render.opengl.GL;
+import snow.utils.Float32Array;
+
 import gltoolbox.render.RenderTarget2Phase;
 import gltoolbox.render.RenderTarget;
-import lime.graphics.GLRenderContext;
-import lime.graphics.opengl.GLBuffer;
-import lime.graphics.opengl.GLTexture;
-import lime.math.Vector2;
-import lime.utils.Float32Array;
 import shaderblox.ShaderBase;
 
+import Main.Vector2;
+
 class GPUFluid{
-	var gl:GLRenderContext;
+	var gl = GL;
 	public var width  (default, null) : Int;
 	public var height (default, null) : Int;
 
@@ -38,8 +38,7 @@ class GPUFluid{
 	//Geometry
 	var textureQuad : GLBuffer;
 
-	public function new(gl:GLRenderContext, width:Int, height:Int, cellSize:Float = 8, solverIterations:Int = 18){
-		this.gl = gl;
+	public function new(width:Int, height:Int, cellSize:Float = 8, solverIterations:Int = 18){
 		this.width = width;
 		this.height = height;
 		this.solverIterations = solverIterations;
@@ -56,22 +55,22 @@ class GPUFluid{
 
 		//geometry
 		//	inner quad, for main fluid shaders
-		textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
+		textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad();
 
 		//create texture
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
-		var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
+		var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
 
-		velocityRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
-		pressureRenderTarget = new RenderTarget2Phase(gl, nearestFactory, width, height);
-		divergenceRenderTarget = new RenderTarget(gl, nearestFactory, width, height);
-		dyeRenderTarget = new RenderTarget2Phase(gl, 
-			gltoolbox.TextureTools.customTextureFactory(
+		velocityRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
+		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
+		divergenceRenderTarget = new RenderTarget(width, height, nearestFactory);
+		dyeRenderTarget = new RenderTarget2Phase( 
+			width,
+			height,
+			gltoolbox.TextureTools.createTextureFactory(
 				gl.RGB, gl.FLOAT, 
 				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
-			),
-			width,
-			height
+			)
 		);
 
 		//texel-space parameters
@@ -217,20 +216,20 @@ class GPUFluid{
 	}
 }
 
-@:vert('#pragma include("Source/shaders/glsl/fluid/texel-space.vert")')
-@:frag('#pragma include("Source/shaders/glsl/fluid/fluid-base.frag")')
+@:vert('#pragma include("src/shaders/glsl/fluid/texel-space.vert")')
+@:frag('#pragma include("src/shaders/glsl/fluid/fluid-base.frag")')
 class FluidBase extends ShaderBase{}
 
-@:frag('#pragma include("Source/shaders/glsl/fluid/advect.frag")')
+@:frag('#pragma include("src/shaders/glsl/fluid/advect.frag")')
 class Advect extends FluidBase{}
 
-@:frag('#pragma include("Source/shaders/glsl/fluid/velocity-divergence.frag")')
+@:frag('#pragma include("src/shaders/glsl/fluid/velocity-divergence.frag")')
 class Divergence extends FluidBase{}
 
-@:frag('#pragma include("Source/shaders/glsl/fluid/pressure-solve.frag")')
+@:frag('#pragma include("src/shaders/glsl/fluid/pressure-solve.frag")')
 class PressureSolve extends FluidBase{}
 
-@:frag('#pragma include("Source/shaders/glsl/fluid/pressure-gradient-subtract.frag")')
+@:frag('#pragma include("src/shaders/glsl/fluid/pressure-gradient-subtract.frag")')
 class PressureGradientSubstract extends FluidBase{}
 
 @:frag('
