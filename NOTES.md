@@ -1,3 +1,8 @@
+iOS Port:
+	- Be careful about unfinsihed  half_float business in gltoolbox
+	view controller based status bar still causes issues
+
+
 NOTES:
 	- Editable particle count - use url params and reload to avoid texture allocation issue?
 		-> let u/CaptainObliviousity and u/8lbIceBag know when complete

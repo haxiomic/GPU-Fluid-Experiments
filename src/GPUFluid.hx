@@ -61,7 +61,12 @@ class GPUFluid{
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
 		var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
 
-		velocityRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
+		velocityRenderTarget = new RenderTarget2Phase(width, height, 
+			gltoolbox.TextureTools.createTextureFactory(
+				gl.RGB, gl.FLOAT, 
+				gl.LINEAR //texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
+			)
+		);
 		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
 		divergenceRenderTarget = new RenderTarget(width, height, nearestFactory);
 		dyeRenderTarget = new RenderTarget2Phase( 

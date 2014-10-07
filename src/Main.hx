@@ -48,11 +48,12 @@ class Main extends App {
 	var fluidScale:Float;
 	var fluidIterations(default, set):Int;
 	var offScreenScale:Float;
+	var offScreenFilter:Int;
 	var simulationQuality(default, set):SimulationQuality;
 
 	var window:Window;
 
-	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
+	static inline var OFFSCREEN_RENDER = #if js false #else true #end;//seems to be faster when on!
 	
 	public function new () {
 		super();
@@ -64,7 +65,7 @@ class Main extends App {
 		#if desktop
 		simulationQuality = UltraHigh;
 		#elseif ios
-		simulationQuality = UltraLow;
+		simulationQuality = iOS;
 		#end
 
 
@@ -89,6 +90,8 @@ class Main extends App {
 	}
 
 	override function config( config:AppConfig ) : AppConfig {
+		config.window.borderless = true;
+		config.window.fullscreen = true;
 	    return config;
 	}
 
@@ -99,7 +102,6 @@ class Main extends App {
 	}
 
 	function init():Void {
-		trace("MAX_VERTEX_TEXTURE_IMAGE_UNITS:"+gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS));
 
 		gl.disable(gl.DEPTH_TEST);
 		gl.disable(gl.CULL_FACE);
@@ -115,7 +117,7 @@ class Main extends App {
 			gltoolbox.TextureTools.createTextureFactory(
 				gl.RGBA,
 				gl.UNSIGNED_BYTE,
-				gl.NEAREST
+				offScreenFilter
 			)
 		);
 
@@ -301,26 +303,37 @@ class Main extends App {
 				fluidScale = 1/2;
 				fluidIterations = 30;
 				offScreenScale = 1/1;
+				offScreenFilter = GL.NEAREST;
 			case High:
 				particleCount = 1 << 20;
 				fluidScale = 1/4;
 				fluidIterations = 20;
 				offScreenScale = 1/1;
+				offScreenFilter = GL.NEAREST;
 			case Medium:
 				particleCount = 1 << 18;
 				fluidScale = 1/4;
 				fluidIterations = 18;
 				offScreenScale = 1/1;
+				offScreenFilter = GL.NEAREST;
 			case Low:
 				particleCount = 1 << 16;
 				fluidScale = 1/5;
 				fluidIterations = 14;
 				offScreenScale = 1/1;
+				offScreenFilter = GL.NEAREST;
 			case UltraLow:
 				particleCount = 1 << 14;
 				fluidScale = 1/6;
 				fluidIterations = 12;
 				offScreenScale = 1/2;
+				offScreenFilter = GL.NEAREST;
+			case iOS:
+				particleCount = 1 << 16;
+				fluidScale = 1/11;
+				fluidIterations = 8;
+				offScreenScale = 1/2;
+				offScreenFilter = GL.LINEAR;
 		}
 		return simulationQuality = quality;
 	}
@@ -382,6 +395,7 @@ class Main extends App {
 	inline function windowToClipSpaceX(x:Float)return (x/window.width)*2 - 1;
 	inline function windowToClipSpaceY(y:Float)return ((window.height-y)/window.height)*2 - 1;
 
+	#if !mobile
 	override function onmousedown( x : Float , y : Float , button : Int, _, _){
 		this.isMouseDown = true; 
 	}
@@ -397,22 +411,31 @@ class Main extends App {
 		);
 		mousePointKnown = true;
 	}
+	#end
 
-	override function ontouchdown(_,_,_,_){
-		this.isMouseDown = true; 
-	}
-
-	override function ontouchup(_,_,_,_){
-		this.isMouseDown = false; 
-	}
-
-	override function ontouchmove(x,y,_,_,_,_){
+	function updateTouchCoordinate(x:Float, y:Float){
+		x = x*window.width;
+		y = y*window.height;
 		mouse.set(x, y);
 		mouseClipSpace.set(
 			windowToClipSpaceX(x),
 			windowToClipSpaceY(y)
 		);
 		mousePointKnown = true;
+	}
+	override function ontouchdown(x,y,_,_){
+		updateTouchCoordinate(x,y);
+		updateLastMouse();
+		this.isMouseDown = true; 
+	}
+
+	override function ontouchup(x,y,_,_){
+		updateTouchCoordinate(x,y);
+		this.isMouseDown = false;
+	}
+
+	override function ontouchmove(x:Float,y:Float,_,_,_,_){
+		updateTouchCoordinate(x,y);
 	}
 
 
@@ -447,6 +470,7 @@ enum SimulationQuality{
 	Medium;
 	Low;
 	UltraLow;
+	iOS;
 }
 
 @:vert('#pragma include("src/shaders/glsl/no-transform.vert")')
@@ -460,7 +484,7 @@ class ScreenTexture extends ShaderBase {}
 		gl_PointSize = 1.0;
 		gl_Position = vec4(p, 0.0, 1.0);
 		float speed = length(v);
-		float x = clamp(speed * 4.0, 0., 1.);
+		float x = clamp(speed * 1.0, 0., 1.);
 		color.rgb = (
 				mix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)
 				+ (vec3(63.1, 92.5, 100) / 100.) * x*x*x * .1
@@ -523,9 +547,11 @@ class MouseDye extends GPUFluid.UpdateDye{}
 		v.xy *= 0.999;
 
 		if(isMouseDown){
-			vec2 mouse = clipToSimSpace(mouseClipSpace);
+			vec2 mouse = clipToSimSpace(mouseClipSpace) ;
 			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
 			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
+
+			// mouse = mouse - (lastMouse - mouse) * 2.0;//predict mouse position
 				
 			//compute tapered distance to mouse line segment
 			float projection;
@@ -537,7 +563,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float m = exp(-l/R); //drag coefficient
 			m *= projectedFraction * projectedFraction;
 
-			vec2 targetVelocity = mouseVelocity*dx;
+			vec2 targetVelocity = mouseVelocity * dx * 1.4;
 			v += (targetVelocity - v)*m;
 		}
 
