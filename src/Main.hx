@@ -53,7 +53,7 @@ class Main extends App {
 
 	var window:Window;
 
-	static inline var OFFSCREEN_RENDER = #if js false #else true #end;//seems to be faster when on!
+	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
 	
 	public function new () {
 		super();
@@ -115,7 +115,7 @@ class Main extends App {
 			Math.round(window.width*offScreenScale),
 			Math.round(window.height*offScreenScale),
 			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGBA,
+				gl.RGB,
 				gl.UNSIGNED_BYTE,
 				offScreenFilter
 			)
@@ -215,7 +215,7 @@ class Main extends App {
 		var dt = time - lastTime; //60fps ~ 0.016
 		lastTime = time;
 
-		performanceMonitor.recordFrameTime(dt);
+		// performanceMonitor.recordFrameTime(dt);
 
 		//update mouse velocity
 		if(lastMousePointKnown){
@@ -330,7 +330,7 @@ class Main extends App {
 				offScreenFilter = GL.NEAREST;
 			case iOS:
 				particleCount = 1 << 16;
-				fluidScale = 1/11;
+				fluidScale = 1/10;
 				fluidIterations = 8;
 				offScreenScale = 1/2;
 				offScreenFilter = GL.LINEAR;

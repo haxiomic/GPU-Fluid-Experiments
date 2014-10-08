@@ -63,7 +63,8 @@ class GPUFluid{
 
 		velocityRenderTarget = new RenderTarget2Phase(width, height, 
 			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGB, gl.FLOAT, 
+				gl.RGBA, 
+				gl.FLOAT, 
 				gl.LINEAR //texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
 			)
 		);
@@ -73,7 +74,8 @@ class GPUFluid{
 			width,
 			height,
 			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGB, gl.FLOAT, 
+				gl.RGBA, 
+				gl.FLOAT, 
 				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
 			)
 		);
