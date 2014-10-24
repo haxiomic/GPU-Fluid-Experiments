@@ -389,6 +389,10 @@ class Main extends Application {
 	}
 
 	override function onMouseMove( x : Float , y : Float , button : Int ) {
+		updateMouseCoord(x, y);
+	}
+
+	inline function updateMouseCoord(x:Float, y:Float){
 		mouse.setTo(x, y);
 		mouseClipSpace.setTo(
 			windowToClipSpaceX(x),
@@ -404,6 +408,20 @@ class Main extends Application {
 			windowToClipSpaceY(mouse.y)
 		);
 		lastMousePointKnown = true && mousePointKnown;
+	}
+
+	//touch
+	override function onTouchStart (x:Float, y:Float, id:Int) {
+		updateMouseCoord(x, y);
+		updateLastMouse();
+		this.isMouseDown = true;
+	}
+	override function onTouchEnd (x:Float, y:Float, id:Int){
+		updateMouseCoord(x, y);
+		this.isMouseDown = false;
+	}
+	override function onTouchMove (x:Float, y:Float, id:Int):Void {
+		updateMouseCoord(x, y);
 	}
 
 	override function onKeyUp( keyCode : Int , modifier : Int ){
