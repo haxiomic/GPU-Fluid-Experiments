@@ -1,5 +1,6 @@
 (function ($hx_exports) { "use strict";
 $hx_exports.lime = $hx_exports.lime || {};
+var console = (1,eval)('this').console || {log:function(){}};
 var $hxClasses = {},$estr = function() { return js.Boot.__string_rec(this,''); };
 function $extend(from, fields) {
 	function Inherit() {} Inherit.prototype = from; var proto = new Inherit();
@@ -109,7 +110,8 @@ DefaultAssetLibrary.prototype = $extend(lime.AssetLibrary.prototype,{
 	}
 	,getBytes: function(id) {
 		var bytes = null;
-		var data = ((function($this) {
+		var data;
+		data = ((function($this) {
 			var $r;
 			var key = $this.path.get(id);
 			$r = lime.app.Preloader.loaders.get(key);
@@ -140,7 +142,8 @@ DefaultAssetLibrary.prototype = $extend(lime.AssetLibrary.prototype,{
 	}
 	,getText: function(id) {
 		var bytes = null;
-		var data = ((function($this) {
+		var data;
+		data = ((function($this) {
 			var $r;
 			var key = $this.path.get(id);
 			$r = lime.app.Preloader.loaders.get(key);
@@ -206,12 +209,12 @@ var GPUFluid = function(gl,width,height,cellSize,solverIterations) {
 	var texture_float_linear_supported = true;
 	if(gl.getExtension("OES_texture_float_linear") == null) texture_float_linear_supported = false;
 	if(gl.getExtension("OES_texture_float") == null) null;
-	this.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
-	var nearestFactory = gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.FLOAT,gl.NEAREST,null);
-	this.velocityRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,nearestFactory,width,height);
-	this.pressureRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,nearestFactory,width,height);
-	this.divergenceRenderTarget = new gltoolbox.render.RenderTarget(gl,nearestFactory,width,height);
-	this.dyeRenderTarget = new gltoolbox.render.RenderTarget2Phase(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGB,gl.FLOAT,texture_float_linear_supported?gl.LINEAR:gl.NEAREST,null),width,height);
+	this.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad();
+	var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGBA,gl.FLOAT,gl.NEAREST,null);
+	this.velocityRenderTarget = new gltoolbox.render.RenderTarget2Phase(width,height,nearestFactory);
+	this.pressureRenderTarget = new gltoolbox.render.RenderTarget2Phase(width,height,nearestFactory);
+	this.divergenceRenderTarget = new gltoolbox.render.RenderTarget(width,height,nearestFactory);
+	this.dyeRenderTarget = new gltoolbox.render.RenderTarget2Phase(width,height,gltoolbox.TextureTools.createTextureFactory(gl.RGB,gl.FLOAT,texture_float_linear_supported?gl.LINEAR:gl.NEAREST,null));
 	this.updateCoreShaderUniforms(this.advectShader);
 	this.updateCoreShaderUniforms(this.divergenceShader);
 	this.updateCoreShaderUniforms(this.pressureSolveShader);
@@ -296,7 +299,7 @@ GPUFluid.prototype = {
 			var i = _g1++;
 			this.pressureSolveShader.pressure.set(this.pressureRenderTarget.readFromTexture);
 			this.pressureSolveShader.setUniforms();
-			this.pressureRenderTarget.activate();
+			lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.pressureRenderTarget.writeFrameBufferObject);
 			this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
 			this.pressureRenderTarget.swap();
 		}
@@ -375,7 +378,7 @@ shaderblox.ShaderBase.prototype = {
 	,create: function() {
 	}
 	,destroy: function() {
-		haxe.Log.trace("Destroying " + Std.string(this),{ fileName : "ShaderBase.hx", lineNumber : 50, className : "shaderblox.ShaderBase", methodName : "destroy"});
+		haxe.Log.trace("Destroying " + Std.string(this),{ fileName : "ShaderBase.hx", lineNumber : 51, className : "shaderblox.ShaderBase", methodName : "destroy"});
 		lime.graphics.opengl.GL.context.deleteShader(this.vert);
 		lime.graphics.opengl.GL.context.deleteShader(this.frag);
 		lime.graphics.opengl.GL.context.deleteProgram(this.prog);
@@ -389,22 +392,22 @@ shaderblox.ShaderBase.prototype = {
 		lime.graphics.opengl.GL.context.shaderSource(vertexShader,vertSource);
 		lime.graphics.opengl.GL.context.compileShader(vertexShader);
 		if(lime.graphics.opengl.GL.context.getShaderParameter(vertexShader,35713) == 0) {
-			haxe.Log.trace("Error compiling vertex shader: " + lime.graphics.opengl.GL.context.getShaderInfoLog(vertexShader),{ fileName : "ShaderBase.hx", lineNumber : 66, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
-			haxe.Log.trace("\n" + vertSource,{ fileName : "ShaderBase.hx", lineNumber : 67, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
+			haxe.Log.trace("Error compiling vertex shader: " + lime.graphics.opengl.GL.context.getShaderInfoLog(vertexShader),{ fileName : "ShaderBase.hx", lineNumber : 67, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
+			haxe.Log.trace("\n" + vertSource,{ fileName : "ShaderBase.hx", lineNumber : 68, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
 			throw "Error compiling vertex shader";
 		}
 		var fragmentShader = lime.graphics.opengl.GL.context.createShader(35632);
 		lime.graphics.opengl.GL.context.shaderSource(fragmentShader,fragSource);
 		lime.graphics.opengl.GL.context.compileShader(fragmentShader);
 		if(lime.graphics.opengl.GL.context.getShaderParameter(fragmentShader,35713) == 0) {
-			haxe.Log.trace("Error compiling fragment shader: " + lime.graphics.opengl.GL.context.getShaderInfoLog(fragmentShader) + "\n",{ fileName : "ShaderBase.hx", lineNumber : 76, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
+			haxe.Log.trace("Error compiling fragment shader: " + lime.graphics.opengl.GL.context.getShaderInfoLog(fragmentShader) + "\n",{ fileName : "ShaderBase.hx", lineNumber : 77, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
 			var lines = fragSource.split("\n");
 			var i = 0;
 			var _g = 0;
 			while(_g < lines.length) {
 				var l = lines[_g];
 				++_g;
-				haxe.Log.trace(i++ + " - " + l,{ fileName : "ShaderBase.hx", lineNumber : 80, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
+				haxe.Log.trace(i++ + " - " + l,{ fileName : "ShaderBase.hx", lineNumber : 81, className : "shaderblox.ShaderBase", methodName : "initFromSource"});
 			}
 			throw "Error compiling fragment shader";
 		}
@@ -528,7 +531,7 @@ FluidBase.__name__ = true;
 FluidBase.__super__ = shaderblox.ShaderBase;
 FluidBase.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -554,7 +557,7 @@ Advect.__name__ = true;
 Advect.__super__ = FluidBase;
 Advect.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\nuniform sampler2D target;\nuniform float dt;\nuniform float rdx; \n\nvarying vec2 texelCoord;\nvarying vec2 p;\n\nvoid main(void){\n  \n  \n  vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy;\n\n  \n  tracedPos = simToTexelSpace(tracedPos)/invresolution; \n  \n  vec4 st;\n  st.xy = floor(tracedPos-.5)+.5; \n  st.zw = st.xy+1.;               \n\n  vec2 t = tracedPos - st.xy;\n\n  st*=invresolution.xyxy; \n  \n  vec4 tex11 = texture2D(target, st.xy );\n  vec4 tex21 = texture2D(target, st.zy );\n  vec4 tex12 = texture2D(target, st.xw );\n  vec4 tex22 = texture2D(target, st.zw );\n\n  \n  gl_FragColor = mix(mix(tex11, tex21, t.x), mix(tex12, tex22, t.x), t.y);\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\nuniform sampler2D target;\nuniform float dt;\nuniform float rdx; \n\nvarying vec2 texelCoord;\nvarying vec2 p;\n\nvoid main(void){\n  \n  \n  vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy;\n\n  \n  tracedPos = simToTexelSpace(tracedPos)/invresolution; \n  \n  vec4 st;\n  st.xy = floor(tracedPos-.5)+.5; \n  st.zw = st.xy+1.;               \n\n  vec2 t = tracedPos - st.xy;\n\n  st*=invresolution.xyxy; \n  \n  vec4 tex11 = texture2D(target, st.xy );\n  vec4 tex21 = texture2D(target, st.zy );\n  vec4 tex12 = texture2D(target, st.xw );\n  vec4 tex22 = texture2D(target, st.zw );\n\n  \n  gl_FragColor = mix(mix(tex11, tex21, t.x), mix(tex12, tex22, t.x), t.y);\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -583,7 +586,7 @@ Divergence.__name__ = true;
 Divergence.__super__ = FluidBase;
 Divergence.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\t\nuniform float halfrdx;\t\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvoid main(void){\r\n\t\n \t\n\tvec2 L = sampleVelocity(velocity, texelCoord - vec2(invresolution.x, 0));\r\n\tvec2 R = sampleVelocity(velocity, texelCoord + vec2(invresolution.x, 0));\r\n\tvec2 B = sampleVelocity(velocity, texelCoord - vec2(0, invresolution.y));\r\n\tvec2 T = sampleVelocity(velocity, texelCoord + vec2(0, invresolution.y));\r\n\r\n\tgl_FragColor = vec4( halfrdx * ((R.x - L.x) + (T.y - B.y)), 0, 0, 1);\r\n}\r\n\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\t\nuniform float halfrdx;\t\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvoid main(void){\r\n\t\n \t\n\tvec2 L = sampleVelocity(velocity, texelCoord - vec2(invresolution.x, 0));\r\n\tvec2 R = sampleVelocity(velocity, texelCoord + vec2(invresolution.x, 0));\r\n\tvec2 B = sampleVelocity(velocity, texelCoord - vec2(0, invresolution.y));\r\n\tvec2 T = sampleVelocity(velocity, texelCoord + vec2(0, invresolution.y));\r\n\r\n\tgl_FragColor = vec4( halfrdx * ((R.x - L.x) + (T.y - B.y)), 0, 0, 1);\r\n}\r\n\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -606,7 +609,7 @@ PressureSolve.__name__ = true;
 PressureSolve.__super__ = FluidBase;
 PressureSolve.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\nuniform sampler2D divergence;\nuniform float alpha;\n\nvarying vec2 texelCoord;\n\nvoid main(void){\n  \n  \n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\n\n  float bC = texture2D(divergence, texelCoord).x;\n\n  gl_FragColor = vec4( (L + R + B + T + alpha * bC) * .25, 0, 0, 1 );\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\nuniform sampler2D divergence;\nuniform float alpha;\n\nvarying vec2 texelCoord;\n\nvoid main(void){\n  \n  \n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\n\n  float bC = texture2D(divergence, texelCoord).x;\n\n  gl_FragColor = vec4( (L + R + B + T + alpha * bC) * .25, 0, 0, 1 );\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -632,7 +635,7 @@ PressureGradientSubstract.__name__ = true;
 PressureGradientSubstract.__super__ = FluidBase;
 PressureGradientSubstract.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\r\nuniform sampler2D velocity;\r\nuniform float halfrdx;\r\n\r\nvarying vec2 texelCoord;\r\n\r\nvoid main(void){\r\n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\r\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\r\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\r\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\r\n\r\n  vec2 v = texture2D(velocity, texelCoord).xy;\r\n\r\n  gl_FragColor = vec4(v - halfrdx*vec2(R-L, T-B), 0, 1);\r\n}\r\n\r\n\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D pressure;\r\nuniform sampler2D velocity;\r\nuniform float halfrdx;\r\n\r\nvarying vec2 texelCoord;\r\n\r\nvoid main(void){\r\n  float L = samplePressue(pressure, texelCoord - vec2(invresolution.x, 0));\r\n  float R = samplePressue(pressure, texelCoord + vec2(invresolution.x, 0));\r\n  float B = samplePressue(pressure, texelCoord - vec2(0, invresolution.y));\r\n  float T = samplePressue(pressure, texelCoord + vec2(0, invresolution.y));\r\n\r\n  vec2 v = texture2D(velocity, texelCoord).xy;\r\n\r\n  gl_FragColor = vec4(v - halfrdx*vec2(R-L, T-B), 0, 1);\r\n}\r\n\r\n\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -658,7 +661,7 @@ ApplyForces.__name__ = true;
 ApplyForces.__super__ = FluidBase;
 ApplyForces.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -684,7 +687,7 @@ UpdateDye.__name__ = true;
 UpdateDye.__super__ = FluidBase;
 UpdateDye.prototype = $extend(FluidBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -706,13 +709,12 @@ var GPUParticles = function(gl,count) {
 	if(count == null) count = 524288;
 	this.gl = gl;
 	gl.getExtension("OES_texture_float");
-	this.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl);
+	this.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad();
 	this.inititalConditionsShader = new InitialConditions();
 	this.stepParticlesShader = new StepParticles();
 	this.stepParticlesShader.dragCoefficient.set_data(1);
 	this.stepParticlesShader.flowScale.data.x = 1;
 	this.stepParticlesShader.flowScale.data.y = 1;
-	this.stepParticlesShader.flowEnabled.set_data(false);
 	this.setCount(count);
 	this.renderShaderTo(this.inititalConditionsShader,this.particleData);
 };
@@ -730,7 +732,7 @@ GPUParticles.prototype = {
 	,setCount: function(newCount) {
 		var dataWidth = Math.ceil(Math.sqrt(newCount));
 		var dataHeight = dataWidth;
-		if(this.particleData != null) this.particleData.resize(dataWidth,dataHeight); else this.particleData = new gltoolbox.render.RenderTarget2Phase(this.gl,gltoolbox.TextureTools.floatTextureFactoryRGBA,dataWidth,dataHeight);
+		if(this.particleData != null) this.particleData.resize(dataWidth,dataHeight); else this.particleData = new gltoolbox.render.RenderTarget2Phase(dataWidth,dataHeight,gltoolbox.TextureTools.floatTextureFactoryRGBA);
 		if(this.particleUVs != null) this.gl.deleteBuffer(this.particleUVs);
 		this.particleUVs = this.gl.createBuffer();
 		var arrayUVs = new Array();
@@ -782,9 +784,6 @@ GPUParticles.prototype = {
 	,get_flowScaleY: function() {
 		return this.stepParticlesShader.flowScale.data.y;
 	}
-	,get_flowEnabled: function() {
-		return this.stepParticlesShader.flowEnabled.data;
-	}
 	,get_flowVelocityField: function() {
 		return this.stepParticlesShader.flowVelocityField.data;
 	}
@@ -797,11 +796,7 @@ GPUParticles.prototype = {
 	,set_flowScaleY: function(v) {
 		return this.stepParticlesShader.flowScale.data.y = v;
 	}
-	,set_flowEnabled: function(v) {
-		return this.stepParticlesShader.flowEnabled.set_data(v);
-	}
 	,set_flowVelocityField: function(v) {
-		if(v != null) this.stepParticlesShader.flowEnabled.set_data(true); else this.stepParticlesShader.flowEnabled.set_data(false);
 		return this.stepParticlesShader.flowVelocityField.set_data(v);
 	}
 	,__class__: GPUParticles
@@ -814,7 +809,7 @@ PlaneTexture.__name__ = true;
 PlaneTexture.__super__ = shaderblox.ShaderBase;
 PlaneTexture.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec2 texelCoord;\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -834,7 +829,7 @@ InitialConditions.__name__ = true;
 InitialConditions.__super__ = PlaneTexture;
 InitialConditions.prototype = $extend(PlaneTexture.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec2 texelCoord;\n\nvoid main(){\n\t\tvec2 ip = vec2((texelCoord.x), (texelCoord.y)) * 2.0 - 1.0;\n\t\tvec2 iv = vec2(0,0);\n\t\tgl_FragColor = vec4(ip, iv);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n\nvoid main(){\n\t\tvec2 ip = vec2((texelCoord.x), (texelCoord.y)) * 2.0 - 1.0;\n\t\tvec2 iv = vec2(0,0);\n\t\tgl_FragColor = vec4(ip, iv);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -851,7 +846,7 @@ ParticleBase.__name__ = true;
 ParticleBase.__super__ = PlaneTexture;
 ParticleBase.prototype = $extend(PlaneTexture.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec2 texelCoord;\n\nuniform float dt;\n\tuniform sampler2D particleData;\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n\nuniform float dt;\n\tuniform sampler2D particleData;\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -874,23 +869,20 @@ StepParticles.__name__ = true;
 StepParticles.__super__ = ParticleBase;
 StepParticles.prototype = $extend(ParticleBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec2 texelCoord;\n\nuniform float dt;\n\tuniform sampler2D particleData;\n\nuniform bool flowEnabled;\n\tuniform float dragCoefficient;\n\tuniform vec2 flowScale;\n\tuniform sampler2D flowVelocityField;\n\tvoid main(){\n\t\tvec2 p = texture2D(particleData, texelCoord).xy;\n\t\tvec2 v = texture2D(particleData, texelCoord).zw;\n\t\tif(flowEnabled){\n\t\t\tvec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;\n\t\t\tv += (vf - v) * dragCoefficient;\n\t\t}\n\t\tp+=dt*v;\n\t\tgl_FragColor = vec4(p, v);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n\t}\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec2 texelCoord;\n\nuniform float dt;\n\tuniform sampler2D particleData;\n\nuniform float dragCoefficient;\n\tuniform vec2 flowScale;\n\tuniform sampler2D flowVelocityField;\n\tvoid main(){\n\t\tvec2 p = texture2D(particleData, texelCoord).xy;\n\t\tvec2 v = texture2D(particleData, texelCoord).zw;\n\t\tvec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;\n\t\tv += (vf - v) * dragCoefficient;\n\t\tp+=dt*v;\n\t\tgl_FragColor = vec4(p, v);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
 		ParticleBase.prototype.createProperties.call(this);
-		var instance = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UBool"),["flowEnabled",-1]);
-		this.flowEnabled = instance;
+		var instance = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UFloat"),["dragCoefficient",-1]);
+		this.dragCoefficient = instance;
 		this.uniforms.push(instance);
-		var instance1 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UFloat"),["dragCoefficient",-1]);
-		this.dragCoefficient = instance1;
+		var instance1 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UVec2"),["flowScale",-1]);
+		this.flowScale = instance1;
 		this.uniforms.push(instance1);
-		var instance2 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UVec2"),["flowScale",-1]);
-		this.flowScale = instance2;
+		var instance2 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UTexture"),["flowVelocityField",-1,false]);
+		this.flowVelocityField = instance2;
 		this.uniforms.push(instance2);
-		var instance3 = Type.createInstance(Type.resolveClass("shaderblox.uniforms.UTexture"),["flowVelocityField",-1,false]);
-		this.flowVelocityField = instance3;
-		this.uniforms.push(instance3);
 		this.aStride += 0;
 	}
 	,__class__: StepParticles
@@ -903,7 +895,7 @@ RenderParticles.__name__ = true;
 RenderParticles.__super__ = shaderblox.ShaderBase;
 RenderParticles.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nuniform sampler2D particleData;\n\tattribute vec2 particleUV;\n\tvarying vec4 color;\n\t\n\tvoid main(){\n\t\tvec2 p = texture2D(particleData, particleUV).xy;\n\t\tvec2 v = texture2D(particleData, particleUV).zw;\n\t\tgl_PointSize = 1.0;\n\t\tgl_Position = vec4(p, 0.0, 1.0);\n\t\tcolor = vec4(1.0, 1.0, 1.0, 1.0);\n\t}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec4 color;\n\tvoid main(){\n\t\tgl_FragColor = vec4(color);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sampler2D particleData;\n\tattribute vec2 particleUV;\n\tvarying vec4 color;\n\t\n\tvoid main(){\n\t\tvec2 p = texture2D(particleData, particleUV).xy;\n\t\tvec2 v = texture2D(particleData, particleUV).zw;\n\t\tgl_PointSize = 1.0;\n\t\tgl_Position = vec4(p, 0.0, 1.0);\n\t\tcolor = vec4(1.0, 1.0, 1.0, 1.0);\n\t}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec4 color;\n\tvoid main(){\n\t\tgl_FragColor = vec4(color);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -921,29 +913,6 @@ RenderParticles.prototype = $extend(shaderblox.ShaderBase.prototype,{
 var HxOverrides = function() { };
 $hxClasses["HxOverrides"] = HxOverrides;
 HxOverrides.__name__ = true;
-HxOverrides.strDate = function(s) {
-	var _g = s.length;
-	switch(_g) {
-	case 8:
-		var k = s.split(":");
-		var d = new Date();
-		d.setTime(0);
-		d.setUTCHours(k[0]);
-		d.setUTCMinutes(k[1]);
-		d.setUTCSeconds(k[2]);
-		return d;
-	case 10:
-		var k1 = s.split("-");
-		return new Date(k1[0],k1[1] - 1,k1[2],0,0,0);
-	case 19:
-		var k2 = s.split(" ");
-		var y = k2[0].split("-");
-		var t = k2[1].split(":");
-		return new Date(y[0],y[1] - 1,y[2],t[0],t[1],t[2]);
-	default:
-		throw "Invalid date format : " + s;
-	}
-};
 HxOverrides.cca = function(s,index) {
 	var x = s.charCodeAt(index);
 	if(x != x) return undefined;
@@ -982,20 +951,6 @@ HxOverrides.iter = function(a) {
 	}, next : function() {
 		return this.arr[this.cur++];
 	}};
-};
-var List = function() {
-	this.length = 0;
-};
-$hxClasses["List"] = List;
-List.__name__ = true;
-List.prototype = {
-	add: function(item) {
-		var x = [item];
-		if(this.h == null) this.h = x; else this.q[1] = x;
-		this.q = x;
-		this.length++;
-	}
-	,__class__: List
 };
 var SimulationQuality = $hxClasses["SimulationQuality"] = { __ename__ : true, __constructs__ : ["UltraHigh","High","Medium","Low","UltraLow"] };
 SimulationQuality.UltraHigh = ["UltraHigh",0];
@@ -1257,8 +1212,8 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			gl.disable(gl.DEPTH_TEST);
 			gl.disable(gl.CULL_FACE);
 			gl.disable(gl.DITHER);
-			this.textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1);
-			this.offScreenTarget = new gltoolbox.render.RenderTarget(gl,gltoolbox.TextureTools.customTextureFactory(gl.RGBA,gl.UNSIGNED_BYTE,gl.NEAREST,null),Math.round(this.windows[0].width * this.offScreenScale),Math.round(this.windows[0].height * this.offScreenScale));
+			this.textureQuad = gltoolbox.GeometryTools.createQuad(0,0,1,1);
+			this.offScreenTarget = new gltoolbox.render.RenderTarget(Math.round(this.windows[0].width * this.offScreenScale),Math.round(this.windows[0].height * this.offScreenScale),gltoolbox.TextureTools.createTextureFactory(gl.RGBA,gl.UNSIGNED_BYTE,gl.NEAREST,null));
 			this.screenTextureShader = new ScreenTexture();
 			this.renderParticlesShader = new ColorParticleMotion();
 			this.updateDyeShader = new MouseDye();
@@ -1290,7 +1245,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			particleCountGUI.__input.disabled = true;
 			gui.add(this,"simulationQuality",Type.allEnums(SimulationQuality)).onChange(function(v) {
 				window.location.href = StringTools.replace(window.location.href,window.location.search,"") + "?q=" + v;
-			}).name("Quality").listen();
+			}).name("Quality");
 			gui.add(this,"fluidIterations",1,50).name("Solver Iterations").onChange(function(v1) {
 				_g.set_fluidIterations(v1);
 			});
@@ -1314,7 +1269,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
 			break;
 		default:
-			js.Lib.alert("WebGL is not supported");
+			js.Lib.alert("WebGL is not supported on this device :(");
 			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 204, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
@@ -1329,7 +1284,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			this.mouseForceShader.isMouseDown.set(this.isMouseDown);
 		}
 		this.fluid.step(dt);
-		this.particles.set_flowVelocityField(this.fluid.velocityRenderTarget.readFromTexture);
+		this.particles.stepParticlesShader.flowVelocityField.set_data(this.fluid.velocityRenderTarget.readFromTexture);
 		if(this.renderParticlesEnabled) this.particles.step(dt);
 		this.gl.viewport(0,0,this.offScreenTarget.width,this.offScreenTarget.height);
 		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.offScreenTarget.frameBufferObject);
@@ -1507,7 +1462,7 @@ ScreenTexture.__name__ = true;
 ScreenTexture.__super__ = shaderblox.ShaderBase;
 ScreenTexture.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nattribute vec2 vertexPosition;\nvarying vec2 texelCoord;\n\nvoid main() {\n\ttexelCoord = vertexPosition;\n\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nuniform sampler2D texture;\nvarying vec2 texelCoord;\n\nvoid main(void){\n\tgl_FragColor = abs(texture2D(texture, texelCoord));\n}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\nvarying vec2 texelCoord;\n\nvoid main() {\n\ttexelCoord = vertexPosition;\n\tgl_Position = vec4(vertexPosition*2.0 - vec2(1.0, 1.0), 0.0, 1.0 );\n}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sampler2D texture;\nvarying vec2 texelCoord;\n\nvoid main(void){\n\tgl_FragColor = abs(texture2D(texture, texelCoord));\n}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1530,7 +1485,7 @@ ColorParticleMotion.__name__ = true;
 ColorParticleMotion.__super__ = RenderParticles;
 ColorParticleMotion.prototype = $extend(RenderParticles.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nuniform sampler2D particleData;\n\tattribute vec2 particleUV;\n\tvarying vec4 color;\n\t\n\n\nvoid main(){\n\t\tvec2 p = texture2D(particleData, particleUV).xy;\n\t\tvec2 v = texture2D(particleData, particleUV).zw;\n\t\tgl_PointSize = 1.0;\n\t\tgl_Position = vec4(p, 0.0, 1.0);\n\t\tfloat speed = length(v);\n\t\tfloat x = clamp(speed * 4.0, 0., 1.);\n\t\tcolor.rgb = (\n\t\t\t\tmix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)\n\t\t\t\t+ (vec3(63.1, 92.5, 100) / 100.) * x*x*x * .1\n\t\t);\n\t\tcolor.a = 1.0;\n\t}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nvarying vec4 color;\n\tvoid main(){\n\t\tgl_FragColor = vec4(color);\n\t}\n\n\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sampler2D particleData;\n\tattribute vec2 particleUV;\n\tvarying vec4 color;\n\t\n\n\nvoid main(){\n\t\tvec2 p = texture2D(particleData, particleUV).xy;\n\t\tvec2 v = texture2D(particleData, particleUV).zw;\n\t\tgl_PointSize = 1.0;\n\t\tgl_Position = vec4(p, 0.0, 1.0);\n\t\tfloat speed = length(v);\n\t\tfloat x = clamp(speed * 4.0, 0., 1.);\n\t\tcolor.rgb = (\n\t\t\t\tmix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)\n\t\t\t\t+ (vec3(63.1, 92.5, 100) / 100.) * x*x*x * .1\n\t\t);\n\t\tcolor.a = 1.0;\n\t}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nvarying vec4 color;\n\tvoid main(){\n\t\tgl_FragColor = vec4(color);\n\t}\n\n\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1547,7 +1502,7 @@ MouseDye.__name__ = true;
 MouseDye.__super__ = UpdateDye;
 MouseDye.prototype = $extend(UpdateDye.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tif(dot(x,x) <= 0.0001) return length(d);\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\telse                            return sqrt(abs(dot(d,d) - projection*projection));\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tvec4 color = texture2D(dye, texelCoord);\n\t\tcolor.r *= (0.9797);\n\t\tcolor.g *= (0.9494);\n\t\tcolor.b *= (0.9696);\n\t\tif(isMouseDown){\t\t\t\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)/dt;\n\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.025;\n\t\t\tfloat m = exp(-l/R);\n\t\t\t\n \t\t\tfloat speed = length(mouseVelocity);\n\t\t\tfloat x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);\n\t\t\tcolor.rgb += m * (\n\t\t\t\tmix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)\n \t\t\t\t+ (vec3(100) / 100.) * pow(x, 9.)\n\t\t\t);\n\t\t}\n\t\tgl_FragColor = color;\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D dye;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tif(dot(x,x) <= 0.0001) return length(d);\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\treturn sqrt(abs(dot(d,d) - projection*projection));\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tvec4 color = texture2D(dye, texelCoord);\n\t\tcolor.r *= (0.9797);\n\t\tcolor.g *= (0.9494);\n\t\tcolor.b *= (0.9696);\n\t\tif(isMouseDown){\t\t\t\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)/dt;\n\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.025;\n\t\t\tfloat m = exp(-l/R);\n\t\t\t\n \t\t\tfloat speed = length(mouseVelocity);\n\t\t\tfloat x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);\n\t\t\tcolor.rgb += m * (\n\t\t\t\tmix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)\n \t\t\t\t+ (vec3(100) / 100.) * pow(x, 9.)\n\t\t\t);\n\t\t}\n\t\tgl_FragColor = color;\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1573,7 +1528,7 @@ MouseForce.__name__ = true;
 MouseForce.__super__ = ApplyForces;
 MouseForce.prototype = $extend(ApplyForces.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tif(dot(x,x) <= 0.0001) return length(d);\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\telse                            return sqrt(abs(dot(d,d) - projection*projection));\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tvec2 v = texture2D(velocity, texelCoord).xy;\n\t\tv.xy *= 0.999;\n\t\tif(isMouseDown){\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)/dt;\n\t\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.015;\n\t\t\tfloat m = exp(-l/R); \n\t\t\tm *= projectedFraction * projectedFraction;\n\t\t\tvec2 targetVelocity = mouseVelocity*dx;\n\t\t\tv += (targetVelocity - v)*m;\n\t\t}\n\t\tgl_FragColor = vec4(v, 0, 1.);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n \r\nattribute vec2 vertexPosition;\r\n\r\nuniform float aspectRatio;\r\n\r\nvarying vec2 texelCoord;\r\n\r\n\r\nvarying vec2 p;\r\n\r\nvoid main() {\r\n\ttexelCoord = vertexPosition;\r\n\t\r\n\tvec2 clipSpace = 2.0*texelCoord - 1.0;\t\n\t\r\n\tp = vec2(clipSpace.x * aspectRatio, clipSpace.y);\r\n\r\n\tgl_Position = vec4(clipSpace, 0.0, 1.0 );\t\r\n}\r\n\n\n\n\n\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\n#define PRESSURE_BOUNDARY\n#define VELOCITY_BOUNDARY\n\nuniform vec2 invresolution;\nuniform float aspectRatio;\n\nvec2 clipToSimSpace(vec2 clipSpace){\n    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);\n}\n\nvec2 simToTexelSpace(vec2 simSpace){\n    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;\n}\n\n\nfloat samplePressue(sampler2D pressure, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n\n    \n    \n    \n    #ifdef PRESSURE_BOUNDARY\n    if(coord.x < 0.0)      cellOffset.x = 1.0;\n    else if(coord.x > 1.0) cellOffset.x = -1.0;\n    if(coord.y < 0.0)      cellOffset.y = 1.0;\n    else if(coord.y > 1.0) cellOffset.y = -1.0;\n    #endif\n\n    return texture2D(pressure, coord + cellOffset * invresolution).x;\n}\n\n\nvec2 sampleVelocity(sampler2D velocity, vec2 coord){\n    vec2 cellOffset = vec2(0.0, 0.0);\n    vec2 multiplier = vec2(1.0, 1.0);\n\n    \n    \n    \n    #ifdef VELOCITY_BOUNDARY\n    if(coord.x<0.0){\n        cellOffset.x = 1.0;\n        multiplier.x = -1.0;\n    }else if(coord.x>1.0){\n        cellOffset.x = -1.0;\n        multiplier.x = -1.0;\n    }\n    if(coord.y<0.0){\n        cellOffset.y = 1.0;\n        multiplier.y = -1.0;\n    }else if(coord.y>1.0){\n        cellOffset.y = -1.0;\n        multiplier.y = -1.0;\n    }\n    #endif\n\n    return multiplier * texture2D(velocity, coord + cellOffset * invresolution).xy;\n}\n\nuniform sampler2D velocity;\n\tuniform float dt;\n\tuniform float dx;\n\tvarying vec2 texelCoord;\n\tvarying vec2 p;\n\n\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p, out float projection){\n\tvec2 d = p - a;\n\tvec2 x = b - a;\n\tif(dot(x,x) <= 0.0001) return length(d);\n\tprojection = dot(d, normalize(x));\n\n\tif(projection < 0.0)            return length(d);\n\telse if(projection > length(x)) return length(p - b);\n\treturn sqrt(abs(dot(d,d) - projection*projection));\n}\nfloat distanceToSegment(vec2 a, vec2 b, vec2 p){\n\tfloat projection;\n\treturn distanceToSegment(a, b, p, projection);\n}\n\tuniform bool isMouseDown;\n\tuniform vec2 mouseClipSpace;\n\tuniform vec2 lastMouseClipSpace;\n\tvoid main(){\n\t\tvec2 v = texture2D(velocity, texelCoord).xy;\n\t\tv.xy *= 0.999;\n\t\tif(isMouseDown){\n\t\t\tvec2 mouse = clipToSimSpace(mouseClipSpace);\n\t\t\tvec2 lastMouse = clipToSimSpace(lastMouseClipSpace);\n\t\t\tvec2 mouseVelocity = -(lastMouse - mouse)/dt;\n\t\t\t\t\n\t\t\t\n\t\t\tfloat projection;\n\t\t\tfloat l = distanceToSegment(mouse, lastMouse, p, projection);\n\t\t\tfloat taperFactor = 0.6;\n\t\t\tfloat projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;\n\t\t\tfloat R = 0.015;\n\t\t\tfloat m = exp(-l/R); \n\t\t\tm *= projectedFraction * projectedFraction;\n\t\t\tvec2 targetVelocity = mouseVelocity*dx;\n\t\t\tv += (targetVelocity - v)*m;\n\t\t}\n\t\tgl_FragColor = vec4(v, 0, 1.);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -1591,9 +1546,6 @@ MouseForce.prototype = $extend(ApplyForces.prototype,{
 	}
 	,__class__: MouseForce
 });
-var IMap = function() { };
-$hxClasses["IMap"] = IMap;
-IMap.__name__ = true;
 Math.__name__ = true;
 var PerformanceMonitor = function(lowerBoundFPS,upperBoundFPS,thresholdTime_ms,fpsSampleSize) {
 	if(fpsSampleSize == null) fpsSampleSize = 30;
@@ -1720,6 +1672,9 @@ Reflect.field = function(o,field) {
 Reflect.setField = function(o,field,value) {
 	o[field] = value;
 };
+Reflect.callMethod = function(o,func,args) {
+	return func.apply(o,args);
+};
 Reflect.fields = function(o) {
 	var a = [];
 	if(o != null) {
@@ -1738,6 +1693,12 @@ Reflect.deleteField = function(o,field) {
 	delete(o[field]);
 	return true;
 };
+Reflect.makeVarArgs = function(f) {
+	return function() {
+		var a = Array.prototype.slice.call(arguments);
+		return f(a);
+	};
+};
 var Std = function() { };
 $hxClasses["Std"] = Std;
 Std.__name__ = true;
@@ -1753,8 +1714,11 @@ Std.parseInt = function(x) {
 	if(isNaN(v)) return null;
 	return v;
 };
-Std.parseFloat = function(x) {
-	return parseFloat(x);
+var StringBuf = function() { };
+$hxClasses["StringBuf"] = StringBuf;
+StringBuf.__name__ = true;
+StringBuf.prototype = {
+	__class__: StringBuf
 };
 var StringTools = function() { };
 $hxClasses["StringTools"] = StringTools;
@@ -1798,7 +1762,7 @@ $hxClasses["Type"] = Type;
 Type.__name__ = true;
 Type.getClass = function(o) {
 	if(o == null) return null;
-	if((o instanceof Array) && o.__enum__ == null) return Array; else return o.__class__;
+	return js.Boot.getClass(o);
 };
 Type.resolveClass = function(name) {
 	var cl = $hxClasses[name];
@@ -1836,16 +1800,12 @@ Type.createInstance = function(cl,args) {
 	}
 	return null;
 };
-Type.createEmptyInstance = function(cl) {
-	function empty() {}; empty.prototype = cl.prototype;
-	return new empty();
-};
 Type.createEnum = function(e,constr,params) {
 	var f = Reflect.field(e,constr);
 	if(f == null) throw "No such constructor " + constr;
 	if(Reflect.isFunction(f)) {
 		if(params == null) throw "Constructor " + constr + " need parameters";
-		return f.apply(e,params);
+		return Reflect.callMethod(e,f,params);
 	}
 	if(params != null && params.length != 0) throw "Constructor " + constr + " does not need parameters";
 	return f;
@@ -1855,51 +1815,56 @@ Type.createEnumIndex = function(e,index,params) {
 	if(c == null) throw index + " is not a valid enum constructor index";
 	return Type.createEnum(e,c,params);
 };
-Type.getEnumConstructs = function(e) {
-	var a = e.__constructs__;
-	return a.slice();
-};
 Type.allEnums = function(e) {
 	return e.__empty_constructs__;
+};
+var _UInt = {};
+_UInt.UInt_Impl_ = function() { };
+$hxClasses["_UInt.UInt_Impl_"] = _UInt.UInt_Impl_;
+_UInt.UInt_Impl_.__name__ = true;
+_UInt.UInt_Impl_.gt = function(a,b) {
+	var aNeg = a < 0;
+	var bNeg = b < 0;
+	if(aNeg != bNeg) return aNeg; else return a > b;
 };
 var gltoolbox = {};
 gltoolbox.GeometryTools = function() { };
 $hxClasses["gltoolbox.GeometryTools"] = gltoolbox.GeometryTools;
 gltoolbox.GeometryTools.__name__ = true;
-gltoolbox.GeometryTools.getCachedTextureQuad = function(gl,drawMode) {
+gltoolbox.GeometryTools.getCachedTextureQuad = function(drawMode) {
 	if(drawMode == null) drawMode = 5;
 	var textureQuad = gltoolbox.GeometryTools.textureQuadCache.get(drawMode);
-	if(textureQuad == null || !gl.isBuffer(textureQuad)) {
-		textureQuad = gltoolbox.GeometryTools.createQuad(gl,0,0,1,1,drawMode);
+	if(textureQuad == null || !lime.graphics.opengl.GL.context.isBuffer(textureQuad)) {
+		textureQuad = gltoolbox.GeometryTools.createQuad(0,0,1,1,drawMode);
 		gltoolbox.GeometryTools.textureQuadCache.set(drawMode,textureQuad);
 	}
 	return textureQuad;
 };
-gltoolbox.GeometryTools.getCachedClipSpaceQuad = function(gl,drawMode) {
+gltoolbox.GeometryTools.getCachedClipSpaceQuad = function(drawMode) {
 	if(drawMode == null) drawMode = 5;
 	var clipSpaceQuad = gltoolbox.GeometryTools.clipSpaceQuadCache.get(drawMode);
-	if(clipSpaceQuad == null || !gl.isBuffer(clipSpaceQuad)) {
-		clipSpaceQuad = gltoolbox.GeometryTools.createQuad(gl,-1,-1,1,1,drawMode);
+	if(clipSpaceQuad == null || !lime.graphics.opengl.GL.context.isBuffer(clipSpaceQuad)) {
+		clipSpaceQuad = gltoolbox.GeometryTools.createQuad(-1,-1,2,2,drawMode);
 		gltoolbox.GeometryTools.clipSpaceQuadCache.set(drawMode,clipSpaceQuad);
 	}
 	return clipSpaceQuad;
 };
-gltoolbox.GeometryTools.createTextureQuad = function(gl,drawMode) {
+gltoolbox.GeometryTools.createTextureQuad = function(drawMode) {
 	if(drawMode == null) drawMode = 5;
-	return gltoolbox.GeometryTools.createQuad(gl,0,0,1,1,drawMode);
+	return gltoolbox.GeometryTools.createQuad(0,0,1,1,drawMode);
 };
-gltoolbox.GeometryTools.createClipSpaceQuad = function(gl,drawMode) {
+gltoolbox.GeometryTools.createClipSpaceQuad = function(drawMode) {
 	if(drawMode == null) drawMode = 5;
-	return gltoolbox.GeometryTools.createQuad(gl,-1,-1,1,1,drawMode);
+	return gltoolbox.GeometryTools.createQuad(-1,-1,2,2,drawMode);
 };
-gltoolbox.GeometryTools.createQuad = function(gl,originX,originY,width,height,drawMode,usage) {
+gltoolbox.GeometryTools.createQuad = function(originX,originY,width,height,drawMode,usage) {
 	if(usage == null) usage = 35044;
 	if(drawMode == null) drawMode = 5;
 	if(height == null) height = 1;
 	if(width == null) width = 1;
 	if(originY == null) originY = 0;
 	if(originX == null) originX = 0;
-	var quad = gl.createBuffer();
+	var quad = lime.graphics.opengl.GL.context.createBuffer();
 	var vertices = new Array();
 	switch(drawMode) {
 	case 5:case 4:
@@ -1910,9 +1875,9 @@ gltoolbox.GeometryTools.createQuad = function(gl,originX,originY,width,height,dr
 		vertices = [originX,originY + height,originX,originY,originX + width,originY,originX + width,originY + height];
 		break;
 	}
-	gl.bindBuffer(gl.ARRAY_BUFFER,quad);
-	gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(vertices),usage);
-	gl.bindBuffer(gl.ARRAY_BUFFER,null);
+	lime.graphics.opengl.GL.context.bindBuffer(34962,quad);
+	lime.graphics.opengl.GL.bufferData(34962,new Float32Array(vertices),usage);
+	lime.graphics.opengl.GL.context.bindBuffer(34962,null);
 	return quad;
 };
 gltoolbox.GeometryTools.boundaryLinesArray = function(width,height) {
@@ -1921,31 +1886,35 @@ gltoolbox.GeometryTools.boundaryLinesArray = function(width,height) {
 gltoolbox.TextureTools = function() { };
 $hxClasses["gltoolbox.TextureTools"] = gltoolbox.TextureTools;
 gltoolbox.TextureTools.__name__ = true;
-gltoolbox.TextureTools.customTextureFactory = function(channelType,dataType,filter,unpackAlignment) {
-	return function(gl,width,height) {
-		return gltoolbox.TextureTools.textureFactory(gl,width,height,channelType,dataType,filter,unpackAlignment);
-	};
-};
-gltoolbox.TextureTools.floatTextureFactoryRGB = function(gl,width,height) {
-	return gltoolbox.TextureTools.textureFactory(gl,width,height,gl.RGB,gl.FLOAT,null,null);
-};
-gltoolbox.TextureTools.floatTextureFactoryRGBA = function(gl,width,height) {
-	return gltoolbox.TextureTools.textureFactory(gl,width,height,gl.RGBA,gl.FLOAT,null,null);
-};
-gltoolbox.TextureTools.textureFactory = function(gl,width,height,channelType,dataType,filter,unpackAlignment) {
+gltoolbox.TextureTools.createTextureFactory = function(channelType,dataType,filter,unpackAlignment) {
 	if(unpackAlignment == null) unpackAlignment = 4;
 	if(filter == null) filter = 9728;
 	if(dataType == null) dataType = 5121;
 	if(channelType == null) channelType = 6408;
-	var texture = gl.createTexture();
-	gl.bindTexture(gl.TEXTURE_2D,texture);
-	gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filter);
-	gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filter);
-	gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
-	gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-	gl.pixelStorei(gl.UNPACK_ALIGNMENT,4);
-	gl.texImage2D(gl.TEXTURE_2D,0,channelType,width,height,0,channelType,dataType,null);
-	gl.bindTexture(gl.TEXTURE_2D,null);
+	return function(width,height) {
+		return gltoolbox.TextureTools.textureFactory(width,height,channelType,dataType,filter,unpackAlignment);
+	};
+};
+gltoolbox.TextureTools.floatTextureFactoryRGB = function(width,height) {
+	return gltoolbox.TextureTools.textureFactory(width,height,6407,5126,null,null);
+};
+gltoolbox.TextureTools.floatTextureFactoryRGBA = function(width,height) {
+	return gltoolbox.TextureTools.textureFactory(width,height,6408,5126,null,null);
+};
+gltoolbox.TextureTools.textureFactory = function(width,height,channelType,dataType,filter,unpackAlignment) {
+	if(unpackAlignment == null) unpackAlignment = 4;
+	if(filter == null) filter = 9728;
+	if(dataType == null) dataType = 5121;
+	if(channelType == null) channelType = 6408;
+	var texture = lime.graphics.opengl.GL.context.createTexture();
+	lime.graphics.opengl.GL.context.bindTexture(3553,texture);
+	lime.graphics.opengl.GL.context.texParameteri(3553,10241,filter);
+	lime.graphics.opengl.GL.context.texParameteri(3553,10240,filter);
+	lime.graphics.opengl.GL.context.texParameteri(3553,10242,33071);
+	lime.graphics.opengl.GL.context.texParameteri(3553,10243,33071);
+	lime.graphics.opengl.GL.context.pixelStorei(3317,4);
+	lime.graphics.opengl.GL.context.texImage2D(3553,0,channelType,width,height,0,channelType,dataType,null);
+	lime.graphics.opengl.GL.context.bindTexture(3553,null);
 	return texture;
 };
 gltoolbox.render = {};
@@ -1955,14 +1924,14 @@ gltoolbox.render.ITargetable.__name__ = true;
 gltoolbox.render.ITargetable.prototype = {
 	__class__: gltoolbox.render.ITargetable
 };
-gltoolbox.render.RenderTarget = function(gl,textureFactory,width,height) {
-	this.gl = gl;
+gltoolbox.render.RenderTarget = function(width,height,textureFactory) {
+	if(textureFactory == null) textureFactory = gltoolbox.TextureTools.createTextureFactory(null,null,null,null);
 	this.width = width;
 	this.height = height;
 	this.textureFactory = textureFactory;
-	this.texture = textureFactory(gl,width,height);
-	if(gltoolbox.render.RenderTarget.textureQuad == null) gltoolbox.render.RenderTarget.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl,gl.TRIANGLE_STRIP);
-	this.frameBufferObject = gl.createFramebuffer();
+	this.texture = textureFactory(width,height);
+	if(gltoolbox.render.RenderTarget.textureQuad == null) gltoolbox.render.RenderTarget.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(5);
+	this.frameBufferObject = lime.graphics.opengl.GL.context.createFramebuffer();
 	this.resize(width,height);
 };
 $hxClasses["gltoolbox.render.RenderTarget"] = gltoolbox.render.RenderTarget;
@@ -1970,15 +1939,15 @@ gltoolbox.render.RenderTarget.__name__ = true;
 gltoolbox.render.RenderTarget.__interfaces__ = [gltoolbox.render.ITargetable];
 gltoolbox.render.RenderTarget.prototype = {
 	resize: function(width,height) {
-		var newTexture = this.textureFactory(this.gl,width,height);
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
-		this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER,this.gl.COLOR_ATTACHMENT0,this.gl.TEXTURE_2D,newTexture,0);
+		var newTexture = this.textureFactory(width,height);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.frameBufferObject);
+		lime.graphics.opengl.GL.context.framebufferTexture2D(36160,36064,3553,newTexture,0);
 		if(this.texture != null) {
 			var resampler = gltoolbox.shaders.Resample.instance;
 			resampler.texture.set_data(this.texture);
-			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
-			this.gl.viewport(0,0,width,height);
-			this.gl.bindBuffer(this.gl.ARRAY_BUFFER,gltoolbox.render.RenderTarget.textureQuad);
+			lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.frameBufferObject);
+			lime.graphics.opengl.GL.context.viewport(0,0,width,height);
+			lime.graphics.opengl.GL.context.bindBuffer(34962,gltoolbox.render.RenderTarget.textureQuad);
 			if(resampler.active) {
 				resampler.setUniforms();
 				resampler.setAttributes();
@@ -1990,13 +1959,13 @@ gltoolbox.render.RenderTarget.prototype = {
 				resampler.setAttributes();
 				resampler.active = true;
 			}
-			this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
+			lime.graphics.opengl.GL.context.drawArrays(5,0,4);
 			resampler.deactivate();
-			this.gl.deleteTexture(this.texture);
+			lime.graphics.opengl.GL.context.deleteTexture(this.texture);
 		} else {
-			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
-			this.gl.clearColor(0,0,0,1);
-			this.gl.clear(16384);
+			lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.frameBufferObject);
+			lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+			lime.graphics.opengl.GL.context.clear(16384);
 		}
 		this.width = width;
 		this.height = height;
@@ -2004,28 +1973,28 @@ gltoolbox.render.RenderTarget.prototype = {
 		return this;
 	}
 	,activate: function() {
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.frameBufferObject);
 	}
 	,clear: function(mask) {
 		if(mask == null) mask = 16384;
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.frameBufferObject);
-		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(mask);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.frameBufferObject);
+		lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+		lime.graphics.opengl.GL.context.clear(mask);
 	}
 	,dispose: function() {
-		this.gl.deleteFramebuffer(this.frameBufferObject);
-		this.gl.deleteTexture(this.texture);
+		lime.graphics.opengl.GL.context.deleteFramebuffer(this.frameBufferObject);
+		lime.graphics.opengl.GL.context.deleteTexture(this.texture);
 	}
 	,__class__: gltoolbox.render.RenderTarget
 };
-gltoolbox.render.RenderTarget2Phase = function(gl,textureFactory,width,height) {
-	this.gl = gl;
+gltoolbox.render.RenderTarget2Phase = function(width,height,textureFactory) {
+	if(textureFactory == null) textureFactory = gltoolbox.TextureTools.createTextureFactory(null,null,null,null);
 	this.width = width;
 	this.height = height;
 	this.textureFactory = textureFactory;
-	if(gltoolbox.render.RenderTarget2Phase.textureQuad == null) gltoolbox.render.RenderTarget2Phase.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(gl,gl.TRIANGLE_STRIP);
-	this.writeFrameBufferObject = gl.createFramebuffer();
-	this.readFrameBufferObject = gl.createFramebuffer();
+	if(gltoolbox.render.RenderTarget2Phase.textureQuad == null) gltoolbox.render.RenderTarget2Phase.textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad(5);
+	this.writeFrameBufferObject = lime.graphics.opengl.GL.context.createFramebuffer();
+	this.readFrameBufferObject = lime.graphics.opengl.GL.context.createFramebuffer();
 	this.resize(width,height);
 };
 $hxClasses["gltoolbox.render.RenderTarget2Phase"] = gltoolbox.render.RenderTarget2Phase;
@@ -2033,18 +2002,18 @@ gltoolbox.render.RenderTarget2Phase.__name__ = true;
 gltoolbox.render.RenderTarget2Phase.__interfaces__ = [gltoolbox.render.ITargetable];
 gltoolbox.render.RenderTarget2Phase.prototype = {
 	resize: function(width,height) {
-		var newWriteToTexture = this.textureFactory(this.gl,width,height);
-		var newReadFromTexture = this.textureFactory(this.gl,width,height);
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
-		this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER,this.gl.COLOR_ATTACHMENT0,this.gl.TEXTURE_2D,newWriteToTexture,0);
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
-		this.gl.framebufferTexture2D(this.gl.FRAMEBUFFER,this.gl.COLOR_ATTACHMENT0,this.gl.TEXTURE_2D,newReadFromTexture,0);
+		var newWriteToTexture = this.textureFactory(width,height);
+		var newReadFromTexture = this.textureFactory(width,height);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.writeFrameBufferObject);
+		lime.graphics.opengl.GL.context.framebufferTexture2D(36160,36064,3553,newWriteToTexture,0);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.readFrameBufferObject);
+		lime.graphics.opengl.GL.context.framebufferTexture2D(36160,36064,3553,newReadFromTexture,0);
 		if(this.readFromTexture != null) {
 			var resampler = gltoolbox.shaders.Resample.instance;
 			resampler.texture.set_data(this.readFromTexture);
-			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
-			this.gl.viewport(0,0,width,height);
-			this.gl.bindBuffer(this.gl.ARRAY_BUFFER,gltoolbox.render.RenderTarget2Phase.textureQuad);
+			lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.readFrameBufferObject);
+			lime.graphics.opengl.GL.context.viewport(0,0,width,height);
+			lime.graphics.opengl.GL.context.bindBuffer(34962,gltoolbox.render.RenderTarget2Phase.textureQuad);
 			if(resampler.active) {
 				resampler.setUniforms();
 				resampler.setAttributes();
@@ -2056,18 +2025,18 @@ gltoolbox.render.RenderTarget2Phase.prototype = {
 				resampler.setAttributes();
 				resampler.active = true;
 			}
-			this.gl.drawArrays(this.gl.TRIANGLE_STRIP,0,4);
+			lime.graphics.opengl.GL.context.drawArrays(5,0,4);
 			resampler.deactivate();
-			this.gl.deleteTexture(this.readFromTexture);
+			lime.graphics.opengl.GL.context.deleteTexture(this.readFromTexture);
 		} else {
-			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
-			this.gl.clearColor(0,0,0,1);
-			this.gl.clear(16384);
+			lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.readFrameBufferObject);
+			lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+			lime.graphics.opengl.GL.context.clear(16384);
 		}
-		if(this.writeToTexture != null) this.gl.deleteTexture(this.writeToTexture); else {
-			this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
-			this.gl.clearColor(0,0,0,1);
-			this.gl.clear(16384);
+		if(this.writeToTexture != null) lime.graphics.opengl.GL.context.deleteTexture(this.writeToTexture); else {
+			lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.writeFrameBufferObject);
+			lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+			lime.graphics.opengl.GL.context.clear(16384);
 		}
 		this.width = width;
 		this.height = height;
@@ -2076,7 +2045,7 @@ gltoolbox.render.RenderTarget2Phase.prototype = {
 		return this;
 	}
 	,activate: function() {
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.writeFrameBufferObject);
 	}
 	,swap: function() {
 		this.tmpFBO = this.writeFrameBufferObject;
@@ -2088,30 +2057,30 @@ gltoolbox.render.RenderTarget2Phase.prototype = {
 	}
 	,clear: function(mask) {
 		if(mask == null) mask = 16384;
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
-		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(mask);
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
-		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(mask);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.readFrameBufferObject);
+		lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+		lime.graphics.opengl.GL.context.clear(mask);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.writeFrameBufferObject);
+		lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+		lime.graphics.opengl.GL.context.clear(mask);
 	}
 	,clearRead: function(mask) {
 		if(mask == null) mask = 16384;
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.readFrameBufferObject);
-		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(mask);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.readFrameBufferObject);
+		lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+		lime.graphics.opengl.GL.context.clear(mask);
 	}
 	,clearWrite: function(mask) {
 		if(mask == null) mask = 16384;
-		this.gl.bindFramebuffer(this.gl.FRAMEBUFFER,this.writeFrameBufferObject);
-		this.gl.clearColor(0,0,0,1);
-		this.gl.clear(mask);
+		lime.graphics.opengl.GL.context.bindFramebuffer(36160,this.writeFrameBufferObject);
+		lime.graphics.opengl.GL.context.clearColor(0,0,0,1);
+		lime.graphics.opengl.GL.context.clear(mask);
 	}
 	,dispose: function() {
-		this.gl.deleteFramebuffer(this.writeFrameBufferObject);
-		this.gl.deleteFramebuffer(this.readFrameBufferObject);
-		this.gl.deleteTexture(this.writeToTexture);
-		this.gl.deleteTexture(this.readFromTexture);
+		lime.graphics.opengl.GL.context.deleteFramebuffer(this.writeFrameBufferObject);
+		lime.graphics.opengl.GL.context.deleteFramebuffer(this.readFrameBufferObject);
+		lime.graphics.opengl.GL.context.deleteTexture(this.writeToTexture);
+		lime.graphics.opengl.GL.context.deleteTexture(this.readFromTexture);
 	}
 	,__class__: gltoolbox.render.RenderTarget2Phase
 };
@@ -2139,7 +2108,13 @@ js.Boot.__trace = function(v,i) {
 	if(typeof(document) != "undefined" && (d = document.getElementById("haxe:trace")) != null) d.innerHTML += js.Boot.__unhtml(msg) + "<br/>"; else if(typeof console != "undefined" && console.log != null) console.log(msg);
 };
 js.Boot.getClass = function(o) {
-	if((o instanceof Array) && o.__enum__ == null) return Array; else return o.__class__;
+	if((o instanceof Array) && o.__enum__ == null) return Array; else {
+		var cl = o.__class__;
+		if(cl != null) return cl;
+		var name = js.Boot.__nativeClassName(o);
+		if(name != null) return js.Boot.__resolveNativeClass(name);
+		return null;
+	}
 };
 js.Boot.__string_rec = function(o,s) {
 	if(o == null) return "null";
@@ -2151,18 +2126,18 @@ js.Boot.__string_rec = function(o,s) {
 		if(o instanceof Array) {
 			if(o.__enum__) {
 				if(o.length == 2) return o[0];
-				var str = o[0] + "(";
+				var str2 = o[0] + "(";
 				s += "\t";
 				var _g1 = 2;
 				var _g = o.length;
 				while(_g1 < _g) {
-					var i = _g1++;
-					if(i != 2) str += "," + js.Boot.__string_rec(o[i],s); else str += js.Boot.__string_rec(o[i],s);
+					var i1 = _g1++;
+					if(i1 != 2) str2 += "," + js.Boot.__string_rec(o[i1],s); else str2 += js.Boot.__string_rec(o[i1],s);
 				}
-				return str + ")";
+				return str2 + ")";
 			}
 			var l = o.length;
-			var i1;
+			var i;
 			var str1 = "[";
 			s += "\t";
 			var _g2 = 0;
@@ -2184,7 +2159,7 @@ js.Boot.__string_rec = function(o,s) {
 			if(s2 != "[object Object]") return s2;
 		}
 		var k = null;
-		var str2 = "{\n";
+		var str = "{\n";
 		s += "\t";
 		var hasp = o.hasOwnProperty != null;
 		for( var k in o ) {
@@ -2194,12 +2169,12 @@ js.Boot.__string_rec = function(o,s) {
 		if(k == "prototype" || k == "__class__" || k == "__super__" || k == "__interfaces__" || k == "__properties__") {
 			continue;
 		}
-		if(str2.length != 2) str2 += ", \n";
-		str2 += s + k + " : " + js.Boot.__string_rec(o[k],s);
+		if(str.length != 2) str += ", \n";
+		str += s + k + " : " + js.Boot.__string_rec(o[k],s);
 		}
 		s = s.substring(1);
-		str2 += "\n" + s + "}";
-		return str2;
+		str += "\n" + s + "}";
+		return str;
 	case "function":
 		return "<function>";
 	case "string":
@@ -2243,6 +2218,8 @@ js.Boot.__instanceof = function(o,cl) {
 			if(typeof(cl) == "function") {
 				if(o instanceof cl) return true;
 				if(js.Boot.__interfLoop(js.Boot.getClass(o),cl)) return true;
+			} else if(typeof(cl) == "object" && js.Boot.__isNativeObj(cl)) {
+				if(o instanceof cl) return true;
 			}
 		} else return false;
 		if(cl == Class && o.__name__ != null) return true;
@@ -2253,6 +2230,17 @@ js.Boot.__instanceof = function(o,cl) {
 js.Boot.__cast = function(o,t) {
 	if(js.Boot.__instanceof(o,t)) return o; else throw "Cannot cast " + Std.string(o) + " to " + Std.string(t);
 };
+js.Boot.__nativeClassName = function(o) {
+	var name = js.Boot.__toStr.call(o).slice(8,-1);
+	if(name == "Object" || name == "Function" || name == "Math" || name == "JSON") return null;
+	return name;
+};
+js.Boot.__isNativeObj = function(o) {
+	return js.Boot.__nativeClassName(o) != null;
+};
+js.Boot.__resolveNativeClass = function(name) {
+	if(typeof window != "undefined") return window[name]; else return global[name];
+};
 gltoolbox.shaders = {};
 gltoolbox.shaders.Resample = function() {
 	shaderblox.ShaderBase.call(this);
@@ -2262,7 +2250,7 @@ gltoolbox.shaders.Resample.__name__ = true;
 gltoolbox.shaders.Resample.__super__ = shaderblox.ShaderBase;
 gltoolbox.shaders.Resample.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	create: function() {
-		this.initFromSource("\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - 1.0, 0.0, 1.0 );\n\t}\n","\n#ifdef GL_ES\nprecision highp float;\n#endif\n\nuniform sampler2D texture;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\tgl_FragColor = texture2D(texture, texelCoord);\n\t}\n");
+		this.initFromSource("\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nattribute vec2 vertexPosition;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\ttexelCoord = vertexPosition;\n\t\tgl_Position = vec4(vertexPosition*2.0 - 1.0, 0.0, 1.0 );\n\t}\n","\n#ifdef GL_ES\nprecision mediump float;\n#endif\n\nuniform sampler2D texture;\n\tvarying vec2 texelCoord;\n\tvoid main(){\n\t\tgl_FragColor = texture2D(texture, texelCoord);\n\t}\n");
 		this.ready = true;
 	}
 	,createProperties: function() {
@@ -2278,6 +2266,9 @@ gltoolbox.shaders.Resample.prototype = $extend(shaderblox.ShaderBase.prototype,{
 	,__class__: gltoolbox.shaders.Resample
 });
 var haxe = {};
+haxe.IMap = function() { };
+$hxClasses["haxe.IMap"] = haxe.IMap;
+haxe.IMap.__name__ = true;
 haxe.Log = function() { };
 $hxClasses["haxe.Log"] = haxe.Log;
 haxe.Log.__name__ = true;
@@ -2318,273 +2309,6 @@ haxe.Timer.prototype = {
 	,run: function() {
 	}
 	,__class__: haxe.Timer
-};
-haxe.Unserializer = function(buf) {
-	this.buf = buf;
-	this.length = buf.length;
-	this.pos = 0;
-	this.scache = new Array();
-	this.cache = new Array();
-	var r = haxe.Unserializer.DEFAULT_RESOLVER;
-	if(r == null) {
-		r = Type;
-		haxe.Unserializer.DEFAULT_RESOLVER = r;
-	}
-	this.setResolver(r);
-};
-$hxClasses["haxe.Unserializer"] = haxe.Unserializer;
-haxe.Unserializer.__name__ = true;
-haxe.Unserializer.initCodes = function() {
-	var codes = new Array();
-	var _g1 = 0;
-	var _g = haxe.Unserializer.BASE64.length;
-	while(_g1 < _g) {
-		var i = _g1++;
-		codes[haxe.Unserializer.BASE64.charCodeAt(i)] = i;
-	}
-	return codes;
-};
-haxe.Unserializer.prototype = {
-	setResolver: function(r) {
-		if(r == null) this.resolver = { resolveClass : function(_) {
-			return null;
-		}, resolveEnum : function(_1) {
-			return null;
-		}}; else this.resolver = r;
-	}
-	,get: function(p) {
-		return this.buf.charCodeAt(p);
-	}
-	,readDigits: function() {
-		var k = 0;
-		var s = false;
-		var fpos = this.pos;
-		while(true) {
-			var c = this.buf.charCodeAt(this.pos);
-			if(c != c) break;
-			if(c == 45) {
-				if(this.pos != fpos) break;
-				s = true;
-				this.pos++;
-				continue;
-			}
-			if(c < 48 || c > 57) break;
-			k = k * 10 + (c - 48);
-			this.pos++;
-		}
-		if(s) k *= -1;
-		return k;
-	}
-	,unserializeObject: function(o) {
-		while(true) {
-			if(this.pos >= this.length) throw "Invalid object";
-			if(this.buf.charCodeAt(this.pos) == 103) break;
-			var k = this.unserialize();
-			if(!(typeof(k) == "string")) throw "Invalid object key";
-			var v = this.unserialize();
-			o[k] = v;
-		}
-		this.pos++;
-	}
-	,unserializeEnum: function(edecl,tag) {
-		if(this.get(this.pos++) != 58) throw "Invalid enum format";
-		var nargs = this.readDigits();
-		if(nargs == 0) return Type.createEnum(edecl,tag);
-		var args = new Array();
-		while(nargs-- > 0) args.push(this.unserialize());
-		return Type.createEnum(edecl,tag,args);
-	}
-	,unserialize: function() {
-		var _g = this.get(this.pos++);
-		switch(_g) {
-		case 110:
-			return null;
-		case 116:
-			return true;
-		case 102:
-			return false;
-		case 122:
-			return 0;
-		case 105:
-			return this.readDigits();
-		case 100:
-			var p1 = this.pos;
-			while(true) {
-				var c = this.buf.charCodeAt(this.pos);
-				if(c >= 43 && c < 58 || c == 101 || c == 69) this.pos++; else break;
-			}
-			return Std.parseFloat(HxOverrides.substr(this.buf,p1,this.pos - p1));
-		case 121:
-			var len = this.readDigits();
-			if(this.get(this.pos++) != 58 || this.length - this.pos < len) throw "Invalid string length";
-			var s = HxOverrides.substr(this.buf,this.pos,len);
-			this.pos += len;
-			s = decodeURIComponent(s.split("+").join(" "));
-			this.scache.push(s);
-			return s;
-		case 107:
-			return Math.NaN;
-		case 109:
-			return Math.NEGATIVE_INFINITY;
-		case 112:
-			return Math.POSITIVE_INFINITY;
-		case 97:
-			var buf = this.buf;
-			var a = new Array();
-			this.cache.push(a);
-			while(true) {
-				var c1 = this.buf.charCodeAt(this.pos);
-				if(c1 == 104) {
-					this.pos++;
-					break;
-				}
-				if(c1 == 117) {
-					this.pos++;
-					var n = this.readDigits();
-					a[a.length + n - 1] = null;
-				} else a.push(this.unserialize());
-			}
-			return a;
-		case 111:
-			var o = { };
-			this.cache.push(o);
-			this.unserializeObject(o);
-			return o;
-		case 114:
-			var n1 = this.readDigits();
-			if(n1 < 0 || n1 >= this.cache.length) throw "Invalid reference";
-			return this.cache[n1];
-		case 82:
-			var n2 = this.readDigits();
-			if(n2 < 0 || n2 >= this.scache.length) throw "Invalid string reference";
-			return this.scache[n2];
-		case 120:
-			throw this.unserialize();
-			break;
-		case 99:
-			var name = this.unserialize();
-			var cl = this.resolver.resolveClass(name);
-			if(cl == null) throw "Class not found " + name;
-			var o1 = Type.createEmptyInstance(cl);
-			this.cache.push(o1);
-			this.unserializeObject(o1);
-			return o1;
-		case 119:
-			var name1 = this.unserialize();
-			var edecl = this.resolver.resolveEnum(name1);
-			if(edecl == null) throw "Enum not found " + name1;
-			var e = this.unserializeEnum(edecl,this.unserialize());
-			this.cache.push(e);
-			return e;
-		case 106:
-			var name2 = this.unserialize();
-			var edecl1 = this.resolver.resolveEnum(name2);
-			if(edecl1 == null) throw "Enum not found " + name2;
-			this.pos++;
-			var index = this.readDigits();
-			var tag = Type.getEnumConstructs(edecl1)[index];
-			if(tag == null) throw "Unknown enum index " + name2 + "@" + index;
-			var e1 = this.unserializeEnum(edecl1,tag);
-			this.cache.push(e1);
-			return e1;
-		case 108:
-			var l = new List();
-			this.cache.push(l);
-			var buf1 = this.buf;
-			while(this.buf.charCodeAt(this.pos) != 104) l.add(this.unserialize());
-			this.pos++;
-			return l;
-		case 98:
-			var h = new haxe.ds.StringMap();
-			this.cache.push(h);
-			var buf2 = this.buf;
-			while(this.buf.charCodeAt(this.pos) != 104) {
-				var s1 = this.unserialize();
-				h.set(s1,this.unserialize());
-			}
-			this.pos++;
-			return h;
-		case 113:
-			var h1 = new haxe.ds.IntMap();
-			this.cache.push(h1);
-			var buf3 = this.buf;
-			var c2 = this.get(this.pos++);
-			while(c2 == 58) {
-				var i = this.readDigits();
-				h1.set(i,this.unserialize());
-				c2 = this.get(this.pos++);
-			}
-			if(c2 != 104) throw "Invalid IntMap format";
-			return h1;
-		case 77:
-			var h2 = new haxe.ds.ObjectMap();
-			this.cache.push(h2);
-			var buf4 = this.buf;
-			while(this.buf.charCodeAt(this.pos) != 104) {
-				var s2 = this.unserialize();
-				h2.set(s2,this.unserialize());
-			}
-			this.pos++;
-			return h2;
-		case 118:
-			var d;
-			var s3 = HxOverrides.substr(this.buf,this.pos,19);
-			d = HxOverrides.strDate(s3);
-			this.cache.push(d);
-			this.pos += 19;
-			return d;
-		case 115:
-			var len1 = this.readDigits();
-			var buf5 = this.buf;
-			if(this.get(this.pos++) != 58 || this.length - this.pos < len1) throw "Invalid bytes length";
-			var codes = haxe.Unserializer.CODES;
-			if(codes == null) {
-				codes = haxe.Unserializer.initCodes();
-				haxe.Unserializer.CODES = codes;
-			}
-			var i1 = this.pos;
-			var rest = len1 & 3;
-			var size;
-			size = (len1 >> 2) * 3 + (rest >= 2?rest - 1:0);
-			var max = i1 + (len1 - rest);
-			var bytes = haxe.io.Bytes.alloc(size);
-			var bpos = 0;
-			while(i1 < max) {
-				var c11 = codes[StringTools.fastCodeAt(buf5,i1++)];
-				var c21 = codes[StringTools.fastCodeAt(buf5,i1++)];
-				bytes.set(bpos++,c11 << 2 | c21 >> 4);
-				var c3 = codes[StringTools.fastCodeAt(buf5,i1++)];
-				bytes.set(bpos++,c21 << 4 | c3 >> 2);
-				var c4 = codes[StringTools.fastCodeAt(buf5,i1++)];
-				bytes.set(bpos++,c3 << 6 | c4);
-			}
-			if(rest >= 2) {
-				var c12 = codes[StringTools.fastCodeAt(buf5,i1++)];
-				var c22 = codes[StringTools.fastCodeAt(buf5,i1++)];
-				bytes.set(bpos++,c12 << 2 | c22 >> 4);
-				if(rest == 3) {
-					var c31 = codes[StringTools.fastCodeAt(buf5,i1++)];
-					bytes.set(bpos++,c22 << 4 | c31 >> 2);
-				}
-			}
-			this.pos += len1;
-			this.cache.push(bytes);
-			return bytes;
-		case 67:
-			var name3 = this.unserialize();
-			var cl1 = this.resolver.resolveClass(name3);
-			if(cl1 == null) throw "Class not found " + name3;
-			var o2 = Type.createEmptyInstance(cl1);
-			this.cache.push(o2);
-			o2.hxUnserialize(this);
-			if(this.get(this.pos++) != 103) throw "Invalid custom data";
-			return o2;
-		default:
-		}
-		this.pos--;
-		throw "Invalid char " + this.buf.charAt(this.pos) + " at position " + this.pos;
-	}
-	,__class__: haxe.Unserializer
 };
 haxe.crypto = {};
 haxe.crypto.BaseCode = function(base) {
@@ -2628,7 +2352,7 @@ haxe.ds.IntMap = function() {
 };
 $hxClasses["haxe.ds.IntMap"] = haxe.ds.IntMap;
 haxe.ds.IntMap.__name__ = true;
-haxe.ds.IntMap.__interfaces__ = [IMap];
+haxe.ds.IntMap.__interfaces__ = [haxe.IMap];
 haxe.ds.IntMap.prototype = {
 	set: function(key,value) {
 		this.h[key] = value;
@@ -2638,27 +2362,12 @@ haxe.ds.IntMap.prototype = {
 	}
 	,__class__: haxe.ds.IntMap
 };
-haxe.ds.ObjectMap = function() {
-	this.h = { };
-	this.h.__keys__ = { };
-};
-$hxClasses["haxe.ds.ObjectMap"] = haxe.ds.ObjectMap;
-haxe.ds.ObjectMap.__name__ = true;
-haxe.ds.ObjectMap.__interfaces__ = [IMap];
-haxe.ds.ObjectMap.prototype = {
-	set: function(key,value) {
-		var id = key.__id__ || (key.__id__ = ++haxe.ds.ObjectMap.count);
-		this.h[id] = value;
-		this.h.__keys__[id] = key;
-	}
-	,__class__: haxe.ds.ObjectMap
-};
 haxe.ds.StringMap = function() {
 	this.h = { };
 };
 $hxClasses["haxe.ds.StringMap"] = haxe.ds.StringMap;
 haxe.ds.StringMap.__name__ = true;
-haxe.ds.StringMap.__interfaces__ = [IMap];
+haxe.ds.StringMap.__interfaces__ = [haxe.IMap];
 haxe.ds.StringMap.prototype = {
 	set: function(key,value) {
 		this.h["$" + key] = value;
@@ -2692,6 +2401,10 @@ haxe.ds.StringMap.prototype = {
 	}
 	,__class__: haxe.ds.StringMap
 };
+haxe.ds._Vector = {};
+haxe.ds._Vector.Vector_Impl_ = function() { };
+$hxClasses["haxe.ds._Vector.Vector_Impl_"] = haxe.ds._Vector.Vector_Impl_;
+haxe.ds._Vector.Vector_Impl_.__name__ = true;
 haxe.io = {};
 haxe.io.Bytes = function(length,b) {
 	this.length = length;
@@ -2770,6 +2483,32 @@ haxe.io.Bytes.prototype = {
 	}
 	,__class__: haxe.io.Bytes
 };
+haxe.io.BytesBuffer = function() { };
+$hxClasses["haxe.io.BytesBuffer"] = haxe.io.BytesBuffer;
+haxe.io.BytesBuffer.__name__ = true;
+haxe.io.BytesBuffer.prototype = {
+	__class__: haxe.io.BytesBuffer
+};
+haxe.io.Input = function() { };
+$hxClasses["haxe.io.Input"] = haxe.io.Input;
+haxe.io.Input.__name__ = true;
+haxe.io.BytesInput = function() { };
+$hxClasses["haxe.io.BytesInput"] = haxe.io.BytesInput;
+haxe.io.BytesInput.__name__ = true;
+haxe.io.BytesInput.__super__ = haxe.io.Input;
+haxe.io.BytesInput.prototype = $extend(haxe.io.Input.prototype,{
+	__class__: haxe.io.BytesInput
+});
+haxe.io.Output = function() { };
+$hxClasses["haxe.io.Output"] = haxe.io.Output;
+haxe.io.Output.__name__ = true;
+haxe.io.BytesOutput = function() { };
+$hxClasses["haxe.io.BytesOutput"] = haxe.io.BytesOutput;
+haxe.io.BytesOutput.__name__ = true;
+haxe.io.BytesOutput.__super__ = haxe.io.Output;
+haxe.io.BytesOutput.prototype = $extend(haxe.io.Output.prototype,{
+	__class__: haxe.io.BytesOutput
+});
 haxe.io.Eof = function() { };
 $hxClasses["haxe.io.Eof"] = haxe.io.Eof;
 haxe.io.Eof.__name__ = true;
@@ -2791,6 +2530,9 @@ haxe.io.Error.OutsideBounds.toString = $estr;
 haxe.io.Error.OutsideBounds.__enum__ = haxe.io.Error;
 haxe.io.Error.Custom = function(e) { var $x = ["Custom",3,e]; $x.__enum__ = haxe.io.Error; $x.toString = $estr; return $x; };
 haxe.io.Error.__empty_constructs__ = [haxe.io.Error.Blocked,haxe.io.Error.Overflow,haxe.io.Error.OutsideBounds];
+js.Browser = function() { };
+$hxClasses["js.Browser"] = js.Browser;
+js.Browser.__name__ = true;
 js.Lib = function() { };
 $hxClasses["js.Lib"] = js.Lib;
 js.Lib.__name__ = true;
@@ -2894,9 +2636,9 @@ lime.Assets.getAudioBuffer = function(id,useCache) {
 				var audio1 = library.getAudioBuffer(symbolName);
 				if(useCache && lime.Assets.cache.enabled) lime.Assets.cache.audio.set(id,audio1);
 				return audio1;
-			} else haxe.Log.trace("[Assets] Audio asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 113, className : "lime.Assets", methodName : "getAudioBuffer"});
-		} else haxe.Log.trace("[Assets] There is no audio asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 119, className : "lime.Assets", methodName : "getAudioBuffer"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 125, className : "lime.Assets", methodName : "getAudioBuffer"});
+			} else haxe.Log.trace("[Assets] Audio asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 115, className : "lime.Assets", methodName : "getAudioBuffer"});
+		} else haxe.Log.trace("[Assets] There is no audio asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 121, className : "lime.Assets", methodName : "getAudioBuffer"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 127, className : "lime.Assets", methodName : "getAudioBuffer"});
 	return null;
 };
 lime.Assets.getBytes = function(id) {
@@ -2908,9 +2650,9 @@ lime.Assets.getBytes = function(id) {
 	var library = lime.Assets.getLibrary(libraryName);
 	if(library != null) {
 		if(library.exists(symbolName,"BINARY")) {
-			if(library.isLocal(symbolName,"BINARY")) return library.getBytes(symbolName); else haxe.Log.trace("[Assets] String or ByteArray asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 162, className : "lime.Assets", methodName : "getBytes"});
-		} else haxe.Log.trace("[Assets] There is no String or ByteArray asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 168, className : "lime.Assets", methodName : "getBytes"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 174, className : "lime.Assets", methodName : "getBytes"});
+			if(library.isLocal(symbolName,"BINARY")) return library.getBytes(symbolName); else haxe.Log.trace("[Assets] String or ByteArray asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 164, className : "lime.Assets", methodName : "getBytes"});
+		} else haxe.Log.trace("[Assets] There is no String or ByteArray asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 170, className : "lime.Assets", methodName : "getBytes"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 176, className : "lime.Assets", methodName : "getBytes"});
 	return null;
 };
 lime.Assets.getFont = function(id,useCache) {
@@ -2928,9 +2670,9 @@ lime.Assets.getFont = function(id,useCache) {
 				var font = library.getFont(symbolName);
 				if(useCache && lime.Assets.cache.enabled) lime.Assets.cache.font.set(id,font);
 				return font;
-			} else haxe.Log.trace("[Assets] Font asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 225, className : "lime.Assets", methodName : "getFont"});
-		} else haxe.Log.trace("[Assets] There is no Font asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 231, className : "lime.Assets", methodName : "getFont"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 237, className : "lime.Assets", methodName : "getFont"});
+			} else haxe.Log.trace("[Assets] Font asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 227, className : "lime.Assets", methodName : "getFont"});
+		} else haxe.Log.trace("[Assets] There is no Font asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 233, className : "lime.Assets", methodName : "getFont"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 239, className : "lime.Assets", methodName : "getFont"});
 	return null;
 };
 lime.Assets.getImage = function(id,useCache) {
@@ -2951,9 +2693,9 @@ lime.Assets.getImage = function(id,useCache) {
 				var image1 = library.getImage(symbolName);
 				if(useCache && lime.Assets.cache.enabled) lime.Assets.cache.image.set(id,image1);
 				return image1;
-			} else haxe.Log.trace("[Assets] Image asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 295, className : "lime.Assets", methodName : "getImage"});
-		} else haxe.Log.trace("[Assets] There is no Image asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 301, className : "lime.Assets", methodName : "getImage"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 307, className : "lime.Assets", methodName : "getImage"});
+			} else haxe.Log.trace("[Assets] Image asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 297, className : "lime.Assets", methodName : "getImage"});
+		} else haxe.Log.trace("[Assets] There is no Image asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 303, className : "lime.Assets", methodName : "getImage"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 309, className : "lime.Assets", methodName : "getImage"});
 	return null;
 };
 lime.Assets.getLibrary = function(name) {
@@ -2968,8 +2710,8 @@ lime.Assets.getPath = function(id) {
 	symbolName = HxOverrides.substr(id,pos,null);
 	var library = lime.Assets.getLibrary(libraryName);
 	if(library != null) {
-		if(library.exists(symbolName,null)) return library.getPath(symbolName); else haxe.Log.trace("[Assets] There is no asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 424, className : "lime.Assets", methodName : "getPath"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 430, className : "lime.Assets", methodName : "getPath"});
+		if(library.exists(symbolName,null)) return library.getPath(symbolName); else haxe.Log.trace("[Assets] There is no asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 426, className : "lime.Assets", methodName : "getPath"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 432, className : "lime.Assets", methodName : "getPath"});
 	return null;
 };
 lime.Assets.getText = function(id) {
@@ -2981,9 +2723,9 @@ lime.Assets.getText = function(id) {
 	var library = lime.Assets.getLibrary(libraryName);
 	if(library != null) {
 		if(library.exists(symbolName,"TEXT")) {
-			if(library.isLocal(symbolName,"TEXT")) return library.getText(symbolName); else haxe.Log.trace("[Assets] String asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 467, className : "lime.Assets", methodName : "getText"});
-		} else haxe.Log.trace("[Assets] There is no String asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 473, className : "lime.Assets", methodName : "getText"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 479, className : "lime.Assets", methodName : "getText"});
+			if(library.isLocal(symbolName,"TEXT")) return library.getText(symbolName); else haxe.Log.trace("[Assets] String asset \"" + id + "\" exists, but only asynchronously",{ fileName : "Assets.hx", lineNumber : 469, className : "lime.Assets", methodName : "getText"});
+		} else haxe.Log.trace("[Assets] There is no String asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 475, className : "lime.Assets", methodName : "getText"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 481, className : "lime.Assets", methodName : "getText"});
 	return null;
 };
 lime.Assets.initialize = function() {
@@ -3055,8 +2797,8 @@ lime.Assets.loadAudioBuffer = function(id,handler,useCache) {
 				handler(audio1);
 			}); else library.loadAudioBuffer(symbolName,handler);
 			return;
-		} else haxe.Log.trace("[Assets] There is no audio asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 664, className : "lime.Assets", methodName : "loadAudioBuffer"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 670, className : "lime.Assets", methodName : "loadAudioBuffer"});
+		} else haxe.Log.trace("[Assets] There is no audio asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 666, className : "lime.Assets", methodName : "loadAudioBuffer"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 672, className : "lime.Assets", methodName : "loadAudioBuffer"});
 	handler(null);
 };
 lime.Assets.loadBytes = function(id,handler) {
@@ -3070,8 +2812,8 @@ lime.Assets.loadBytes = function(id,handler) {
 		if(library.exists(symbolName,"BINARY")) {
 			library.loadBytes(symbolName,handler);
 			return;
-		} else haxe.Log.trace("[Assets] There is no String or ByteArray asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 700, className : "lime.Assets", methodName : "loadBytes"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 706, className : "lime.Assets", methodName : "loadBytes"});
+		} else haxe.Log.trace("[Assets] There is no String or ByteArray asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 702, className : "lime.Assets", methodName : "loadBytes"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 708, className : "lime.Assets", methodName : "loadBytes"});
 	handler(null);
 };
 lime.Assets.loadImage = function(id,handler,useCache) {
@@ -3096,17 +2838,16 @@ lime.Assets.loadImage = function(id,handler,useCache) {
 				handler(image1);
 			}); else library.loadImage(symbolName,handler);
 			return;
-		} else haxe.Log.trace("[Assets] There is no Image asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 763, className : "lime.Assets", methodName : "loadImage"});
-	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 769, className : "lime.Assets", methodName : "loadImage"});
+		} else haxe.Log.trace("[Assets] There is no Image asset with an ID of \"" + id + "\"",{ fileName : "Assets.hx", lineNumber : 765, className : "lime.Assets", methodName : "loadImage"});
+	} else haxe.Log.trace("[Assets] There is no asset library named \"" + libraryName + "\"",{ fileName : "Assets.hx", lineNumber : 771, className : "lime.Assets", methodName : "loadImage"});
 	handler(null);
 };
 lime.Assets.loadLibrary = function(name,handler) {
 	lime.Assets.initialize();
-	var data = lime.Assets.getText("libraries/" + name + ".dat");
+	var data = lime.Assets.getText("libraries/" + name + ".json");
 	if(data != null && data != "") {
-		var unserializer = new haxe.Unserializer(data);
-		unserializer.setResolver({ resolveEnum : lime.Assets.resolveEnum, resolveClass : lime.Assets.resolveClass});
-		var library = unserializer.unserialize();
+		var info = JSON.parse(data);
+		var library = Type.createInstance(Type.resolveClass(info.type),info.args);
 		lime.Assets.libraries.set(name,library);
 		library.eventCallback = lime.Assets.library_onEvent;
 		library.load(handler);
@@ -3132,13 +2873,6 @@ lime.Assets.registerLibrary = function(name,library) {
 	if(library != null) library.eventCallback = lime.Assets.library_onEvent;
 	lime.Assets.libraries.set(name,library);
 };
-lime.Assets.resolveClass = function(name) {
-	return Type.resolveClass(name);
-};
-lime.Assets.resolveEnum = function(name) {
-	var value = Type.resolveEnum(name);
-	return value;
-};
 lime.Assets.unloadLibrary = function(name) {
 	lime.Assets.initialize();
 	var library = lime.Assets.libraries.get(name);
@@ -3151,13 +2885,6 @@ lime.Assets.unloadLibrary = function(name) {
 lime.Assets.library_onEvent = function(library,type) {
 	if(type == "change") lime.Assets.cache.clear();
 };
-lime._Assets = {};
-lime._Assets.AssetType_Impl_ = function() { };
-$hxClasses["lime._Assets.AssetType_Impl_"] = lime._Assets.AssetType_Impl_;
-lime._Assets.AssetType_Impl_.__name__ = true;
-lime.app._Application.UpdateEventType_Impl_ = function() { };
-$hxClasses["lime.app._Application.UpdateEventType_Impl_"] = lime.app._Application.UpdateEventType_Impl_;
-lime.app._Application.UpdateEventType_Impl_.__name__ = true;
 lime.app.Preloader = function() {
 	this.total = 0;
 	this.loaded = 0;
@@ -4379,6 +4106,9 @@ lime.graphics.Font.prototype = {
 		this.glyphs = new haxe.ds.IntMap();
 		return null;
 	}
+	,decompose: function() {
+		return null;
+	}
 	,loadRange: function(size,start,end) {
 	}
 	,loadGlyphs: function(size,glyphs) {
@@ -5027,9 +4757,6 @@ lime.graphics.Renderer.prototype = {
 	}
 	,__class__: lime.graphics.Renderer
 };
-lime.graphics._Renderer.RenderEventType_Impl_ = function() { };
-$hxClasses["lime.graphics._Renderer.RenderEventType_Impl_"] = lime.graphics._Renderer.RenderEventType_Impl_;
-lime.graphics._Renderer.RenderEventType_Impl_.__name__ = true;
 lime.graphics.opengl = {};
 lime.graphics.opengl.GL = function() { };
 $hxClasses["lime.graphics.opengl.GL"] = lime.graphics.opengl.GL;
@@ -5591,10 +5318,15 @@ lime.graphics.utils.ImageDataUtil.colorTransform = function(image,rect,colorMatr
 	var data = image.buffer.data;
 	var stride = image.buffer.width * 4;
 	var offset;
-	var rowStart = rect.y + image.offsetY | 0;
-	var rowEnd = rect.height + image.offsetY | 0;
-	var columnStart = rect.x + image.offsetX | 0;
-	var columnEnd = rect.width + image.offsetX | 0;
+	var rowStart = Std["int"](rect.get_top() + image.offsetY);
+	var rowEnd = Std["int"](rect.get_bottom() + image.offsetY);
+	var columnStart = Std["int"](rect.get_left() + image.offsetX);
+	var columnEnd = Std["int"](rect.get_right() + image.offsetX);
+	var r;
+	var g;
+	var b;
+	var a;
+	var ex = 0;
 	var _g = rowStart;
 	while(_g < rowEnd) {
 		var row = _g++;
@@ -5602,10 +5334,17 @@ lime.graphics.utils.ImageDataUtil.colorTransform = function(image,rect,colorMatr
 		while(_g1 < columnEnd) {
 			var column = _g1++;
 			offset = row * stride + column * 4;
-			data[offset] = data[offset] * colorMatrix[0] + colorMatrix[4] * 255 | 0;
-			data[offset + 1] = data[offset + 1] * colorMatrix[6] + colorMatrix[9] * 255 | 0;
-			data[offset + 2] = data[offset + 2] * colorMatrix[12] + colorMatrix[14] * 255 | 0;
-			data[offset + 3] = data[offset + 3] * colorMatrix[18] + colorMatrix[19] * 255 | 0;
+			a = data[offset + 3] * colorMatrix[18] + colorMatrix[19] * 255 | 0;
+			if(a > 255) ex = a - 255; else ex = 0;
+			b = data[offset + 2] * colorMatrix[12] + colorMatrix[14] * 255 + ex | 0;
+			if(b > 255) ex = b - 255; else ex = 0;
+			g = data[offset + 1] * colorMatrix[6] + colorMatrix[9] * 255 + ex | 0;
+			if(g > 255) ex = g - 255; else ex = 0;
+			r = data[offset] * colorMatrix[0] + colorMatrix[4] * 255 + ex | 0;
+			if(r > 255) data[offset] = 255; else data[offset] = r;
+			if(g > 255) data[offset + 1] = 255; else data[offset + 1] = g;
+			if(b > 255) data[offset + 2] = 255; else data[offset + 2] = b;
+			if(a > 255) data[offset + 3] = 255; else data[offset + 3] = a;
 		}
 	}
 	image.dirty = true;
@@ -5675,17 +5414,17 @@ lime.graphics.utils.ImageDataUtil.copyPixels = function(image,sourceImage,source
 	var columnOffset = destPoint.x + image.offsetX - sourceRect.x - sourceImage.offsetY | 0;
 	var sourceData = sourceImage.buffer.data;
 	var sourceStride = sourceImage.buffer.width * 4;
-	var sourceOffset;
+	var sourceOffset = 0;
 	var data = image.buffer.data;
 	var stride = image.buffer.width * 4;
-	var offset;
+	var offset = 0;
 	if(!mergeAlpha || !sourceImage.get_transparent()) {
-		var _g1 = sourceRect.y + sourceImage.offsetY | 0;
-		var _g = sourceRect.height + sourceImage.offsetY | 0;
+		var _g1 = Std["int"](sourceRect.get_top() + sourceImage.offsetY);
+		var _g = Std["int"](sourceRect.get_bottom() + sourceImage.offsetY);
 		while(_g1 < _g) {
 			var row = _g1++;
-			var _g3 = sourceRect.x + sourceImage.offsetX | 0;
-			var _g2 = sourceRect.width + sourceImage.offsetX | 0;
+			var _g3 = Std["int"](sourceRect.get_left() + sourceImage.offsetX);
+			var _g2 = Std["int"](sourceRect.get_right() + sourceImage.offsetX);
 			while(_g3 < _g2) {
 				var column = _g3++;
 				sourceOffset = row * sourceStride + column * 4;
@@ -5699,12 +5438,12 @@ lime.graphics.utils.ImageDataUtil.copyPixels = function(image,sourceImage,source
 	} else {
 		var sourceAlpha;
 		var oneMinusSourceAlpha;
-		var _g11 = sourceRect.y + sourceImage.offsetY | 0;
-		var _g4 = sourceRect.height + sourceImage.offsetY | 0;
+		var _g11 = Std["int"](sourceRect.get_top() + sourceImage.offsetY);
+		var _g4 = Std["int"](sourceRect.get_bottom() + sourceImage.offsetY);
 		while(_g11 < _g4) {
 			var row1 = _g11++;
-			var _g31 = sourceRect.x + sourceImage.offsetX | 0;
-			var _g21 = sourceRect.width + sourceImage.offsetX | 0;
+			var _g31 = Std["int"](sourceRect.get_left() + sourceImage.offsetX);
+			var _g21 = Std["int"](sourceRect.get_right() + sourceImage.offsetX);
 			while(_g31 < _g21) {
 				var column1 = _g31++;
 				sourceOffset = row1 * sourceStride + column1 * 4;
@@ -5730,9 +5469,9 @@ lime.graphics.utils.ImageDataUtil.fillRect = function(image,rect,color) {
 	var stride = image.buffer.width * 4;
 	var offset;
 	var rowStart = rect.y + image.offsetY | 0;
-	var rowEnd = rect.height + image.offsetY | 0;
+	var rowEnd = Std["int"](rect.get_bottom() + image.offsetY);
 	var columnStart = rect.x + image.offsetX | 0;
-	var columnEnd = rect.width + image.offsetX | 0;
+	var columnEnd = Std["int"](rect.get_right() + image.offsetX);
 	var _g = rowStart;
 	while(_g < rowEnd) {
 		var row = _g++;
@@ -5798,7 +5537,7 @@ lime.graphics.utils.ImageDataUtil.getPixel = function(image,x,y) {
 	var offset = 4 * (y + image.offsetY) * image.buffer.width + (x + image.offsetX) * 4;
 	if(image.get_premultiplied()) {
 		var unmultiply = 255.0 / data[offset + 3];
-		haxe.Log.trace(unmultiply,{ fileName : "ImageDataUtil.hx", lineNumber : 324, className : "lime.graphics.utils.ImageDataUtil", methodName : "getPixel"});
+		haxe.Log.trace(unmultiply,{ fileName : "ImageDataUtil.hx", lineNumber : 334, className : "lime.graphics.utils.ImageDataUtil", methodName : "getPixel"});
 		return lime.graphics.utils.ImageDataUtil.__clamp[data[offset] * unmultiply | 0] << 16 | lime.graphics.utils.ImageDataUtil.__clamp[data[offset + 1] * unmultiply | 0] << 8 | lime.graphics.utils.ImageDataUtil.__clamp[data[offset + 2] * unmultiply | 0];
 	} else return data[offset] << 16 | data[offset + 1] << 8 | data[offset + 2];
 };
@@ -7037,10 +6776,6 @@ lime.net.URLRequestHeader.__name__ = true;
 lime.net.URLRequestHeader.prototype = {
 	__class__: lime.net.URLRequestHeader
 };
-lime.net._URLRequestMethod = {};
-lime.net._URLRequestMethod.URLRequestMethod_Impl_ = function() { };
-$hxClasses["lime.net._URLRequestMethod.URLRequestMethod_Impl_"] = lime.net._URLRequestMethod.URLRequestMethod_Impl_;
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.__name__ = true;
 lime.net.URLVariables = function(inEncoded) {
 	if(inEncoded != null) this.decode(inEncoded);
 };
@@ -7099,10 +6834,6 @@ lime.net.curl._CURL.CURL_Impl_.versionInfo = function(type) {
 lime.net.curl._CURL.CURL_Impl_.intGt = function(a,b) {
 	return a > b;
 };
-lime.net.curl._CURLCode = {};
-lime.net.curl._CURLCode.CURLCode_Impl_ = function() { };
-$hxClasses["lime.net.curl._CURLCode.CURLCode_Impl_"] = lime.net.curl._CURLCode.CURLCode_Impl_;
-lime.net.curl._CURLCode.CURLCode_Impl_.__name__ = true;
 lime.net.curl.CURLEasy = function() { };
 $hxClasses["lime.net.curl.CURLEasy"] = lime.net.curl.CURLEasy;
 lime.net.curl.CURLEasy.__name__ = true;
@@ -7138,18 +6869,6 @@ lime.net.curl.CURLEasy.strerror = function(code) {
 lime.net.curl.CURLEasy.unescape = function(handle,url,inLength,outLength) {
 	return null;
 };
-lime.net.curl._CURLInfo = {};
-lime.net.curl._CURLInfo.CURLInfo_Impl_ = function() { };
-$hxClasses["lime.net.curl._CURLInfo.CURLInfo_Impl_"] = lime.net.curl._CURLInfo.CURLInfo_Impl_;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.__name__ = true;
-lime.net.curl._CURLOption = {};
-lime.net.curl._CURLOption.CURLOption_Impl_ = function() { };
-$hxClasses["lime.net.curl._CURLOption.CURLOption_Impl_"] = lime.net.curl._CURLOption.CURLOption_Impl_;
-lime.net.curl._CURLOption.CURLOption_Impl_.__name__ = true;
-lime.net.curl._CURLVersion = {};
-lime.net.curl._CURLVersion.CURLVersion_Impl_ = function() { };
-$hxClasses["lime.net.curl._CURLVersion.CURLVersion_Impl_"] = lime.net.curl._CURLVersion.CURLVersion_Impl_;
-lime.net.curl._CURLVersion.CURLVersion_Impl_.__name__ = true;
 lime.system = {};
 lime.system.System = function() { };
 $hxClasses["lime.system.System"] = lime.system.System;
@@ -7174,6 +6893,9 @@ lime.system.System.findHaxeLib = function(library) {
 lime.system.System.load = function(library,method,args,lazy) {
 	if(lazy == null) lazy = false;
 	if(args == null) args = 0;
+	if(lime.system.System.disableCFFI) return Reflect.makeVarArgs(function(_) {
+		return { };
+	});
 	if(lazy) {
 	}
 	var result = null;
@@ -7188,10 +6910,6 @@ lime.system.System.tryLoad = function(name,library,func,args) {
 lime.system.System.loaderTrace = function(message) {
 };
 lime.ui = {};
-lime.ui._KeyCode = {};
-lime.ui._KeyCode.KeyCode_Impl_ = function() { };
-$hxClasses["lime.ui._KeyCode.KeyCode_Impl_"] = lime.ui._KeyCode.KeyCode_Impl_;
-lime.ui._KeyCode.KeyCode_Impl_.__name__ = true;
 lime.ui.KeyEventManager = function() { };
 $hxClasses["lime.ui.KeyEventManager"] = lime.ui.KeyEventManager;
 lime.ui.KeyEventManager.__name__ = true;
@@ -7261,10 +6979,16 @@ lime.ui.KeyEventManager.convertKeyCode = function(keyCode) {
 	return keyCode;
 };
 lime.ui.KeyEventManager.handleEvent = function(event) {
+	var _g = event.keyCode;
+	switch(_g) {
+	case 32:case 37:case 38:case 39:case 40:
+		event.preventDefault();
+		break;
+	}
 	lime.ui.KeyEventManager.eventInfo.keyCode = lime.ui.KeyEventManager.convertKeyCode(event.keyCode != null?event.keyCode:event.which);
 	if(event.type == "keydown") lime.ui.KeyEventManager.eventInfo.type = 0; else lime.ui.KeyEventManager.eventInfo.type = 1;
-	var _g = lime.ui.KeyEventManager.eventInfo.type;
-	switch(_g) {
+	var _g1 = lime.ui.KeyEventManager.eventInfo.type;
+	switch(_g1) {
 	case 0:
 		var listeners = lime.ui.KeyEventManager.onKeyDown.listeners;
 		var repeat = lime.ui.KeyEventManager.onKeyDown.repeat;
@@ -7309,9 +7033,6 @@ lime.ui._KeyEventManager.KeyEventInfo.prototype = {
 	}
 	,__class__: lime.ui._KeyEventManager.KeyEventInfo
 };
-lime.ui._KeyEventManager.KeyEventType_Impl_ = function() { };
-$hxClasses["lime.ui._KeyEventManager.KeyEventType_Impl_"] = lime.ui._KeyEventManager.KeyEventType_Impl_;
-lime.ui._KeyEventManager.KeyEventType_Impl_.__name__ = true;
 lime.ui.MouseEventManager = function() { };
 $hxClasses["lime.ui.MouseEventManager"] = lime.ui.MouseEventManager;
 lime.ui.MouseEventManager.__name__ = true;
@@ -7338,9 +7059,19 @@ lime.ui.MouseEventManager.handleEvent = function(event) {
 	}
 	if(lime.ui.MouseEventManager.eventInfo.type != 3) {
 		if(lime.ui.MouseEventManager.window != null && lime.ui.MouseEventManager.window.element != null) {
-			var rect = lime.ui.MouseEventManager.window.element.getBoundingClientRect();
-			lime.ui.MouseEventManager.eventInfo.x = (event.clientX - rect.left) * (lime.ui.MouseEventManager.window.width / rect.width);
-			lime.ui.MouseEventManager.eventInfo.y = (event.clientY - rect.top) * (lime.ui.MouseEventManager.window.height / rect.height);
+			if(lime.ui.MouseEventManager.window.canvas != null) {
+				var rect = lime.ui.MouseEventManager.window.canvas.getBoundingClientRect();
+				lime.ui.MouseEventManager.eventInfo.x = (event.clientX - rect.left) * (lime.ui.MouseEventManager.window.width / rect.width);
+				lime.ui.MouseEventManager.eventInfo.y = (event.clientY - rect.top) * (lime.ui.MouseEventManager.window.height / rect.height);
+			} else if(lime.ui.MouseEventManager.window.div != null) {
+				var rect1 = lime.ui.MouseEventManager.window.div.getBoundingClientRect();
+				lime.ui.MouseEventManager.eventInfo.x = event.clientX - rect1.left;
+				lime.ui.MouseEventManager.eventInfo.y = event.clientY - rect1.top;
+			} else {
+				var rect2 = lime.ui.MouseEventManager.window.element.getBoundingClientRect();
+				lime.ui.MouseEventManager.eventInfo.x = (event.clientX - rect2.left) * (lime.ui.MouseEventManager.window.width / rect2.width);
+				lime.ui.MouseEventManager.eventInfo.y = (event.clientY - rect2.top) * (lime.ui.MouseEventManager.window.height / rect2.height);
+			}
 		} else {
 			lime.ui.MouseEventManager.eventInfo.x = event.clientX;
 			lime.ui.MouseEventManager.eventInfo.y = event.clientY;
@@ -7441,9 +7172,6 @@ lime.ui._MouseEventManager.MouseEventInfo.prototype = {
 	}
 	,__class__: lime.ui._MouseEventManager.MouseEventInfo
 };
-lime.ui._MouseEventManager.MouseEventType_Impl_ = function() { };
-$hxClasses["lime.ui._MouseEventManager.MouseEventType_Impl_"] = lime.ui._MouseEventManager.MouseEventType_Impl_;
-lime.ui._MouseEventManager.MouseEventType_Impl_.__name__ = true;
 lime.ui.TouchEventManager = function() { };
 $hxClasses["lime.ui.TouchEventManager"] = lime.ui.TouchEventManager;
 lime.ui.TouchEventManager.__name__ = true;
@@ -7452,8 +7180,6 @@ lime.ui.TouchEventManager.create = function() {
 };
 lime.ui.TouchEventManager.handleEvent = function(event) {
 	event.preventDefault();
-	lime.ui.TouchEventManager.eventInfo.x = event.pageX;
-	lime.ui.TouchEventManager.eventInfo.y = event.pageY;
 	var _g = event.type;
 	switch(_g) {
 	case "touchstart":
@@ -7467,6 +7193,16 @@ lime.ui.TouchEventManager.handleEvent = function(event) {
 		break;
 	default:
 		lime.ui.TouchEventManager.eventInfo.type = null;
+	}
+	var touch = event.changedTouches[0];
+	lime.ui.TouchEventManager.eventInfo.id = touch.identifier;
+	if(lime.ui.TouchEventManager.window != null && lime.ui.TouchEventManager.window.element != null) {
+		var rect = lime.ui.TouchEventManager.window.element.getBoundingClientRect();
+		lime.ui.TouchEventManager.eventInfo.x = (touch.pageX - rect.left) * (lime.ui.TouchEventManager.window.width / rect.width);
+		lime.ui.TouchEventManager.eventInfo.y = (touch.pageY - rect.top) * (lime.ui.TouchEventManager.window.height / rect.height);
+	} else {
+		lime.ui.TouchEventManager.eventInfo.x = touch.pageX;
+		lime.ui.TouchEventManager.eventInfo.y = touch.pageY;
 	}
 	var _g1 = lime.ui.TouchEventManager.eventInfo.type;
 	switch(_g1) {
@@ -7510,11 +7246,54 @@ lime.ui.TouchEventManager.handleEvent = function(event) {
 		}
 		break;
 	}
+	var _g2 = lime.ui.TouchEventManager.eventInfo.type;
+	switch(_g2) {
+	case 0:
+		var listeners3 = lime.ui.TouchEventManager.onTouchStart.listeners;
+		var repeat3 = lime.ui.TouchEventManager.onTouchStart.repeat;
+		var length3 = listeners3.length;
+		var i3 = 0;
+		while(i3 < length3) {
+			listeners3[i3](lime.ui.TouchEventManager.eventInfo.x,lime.ui.TouchEventManager.eventInfo.y,lime.ui.TouchEventManager.eventInfo.id);
+			if(!repeat3[i3]) {
+				lime.ui.TouchEventManager.onTouchStart.remove(listeners3[i3]);
+				length3--;
+			} else i3++;
+		}
+		break;
+	case 1:
+		var listeners4 = lime.ui.TouchEventManager.onTouchEnd.listeners;
+		var repeat4 = lime.ui.TouchEventManager.onTouchEnd.repeat;
+		var length4 = listeners4.length;
+		var i4 = 0;
+		while(i4 < length4) {
+			listeners4[i4](lime.ui.TouchEventManager.eventInfo.x,lime.ui.TouchEventManager.eventInfo.y,lime.ui.TouchEventManager.eventInfo.id);
+			if(!repeat4[i4]) {
+				lime.ui.TouchEventManager.onTouchEnd.remove(listeners4[i4]);
+				length4--;
+			} else i4++;
+		}
+		break;
+	case 2:
+		var listeners5 = lime.ui.TouchEventManager.onTouchMove.listeners;
+		var repeat5 = lime.ui.TouchEventManager.onTouchMove.repeat;
+		var length5 = listeners5.length;
+		var i5 = 0;
+		while(i5 < length5) {
+			listeners5[i5](lime.ui.TouchEventManager.eventInfo.x,lime.ui.TouchEventManager.eventInfo.y,lime.ui.TouchEventManager.eventInfo.id);
+			if(!repeat5[i5]) {
+				lime.ui.TouchEventManager.onTouchMove.remove(listeners5[i5]);
+				length5--;
+			} else i5++;
+		}
+		break;
+	}
 };
 lime.ui.TouchEventManager.registerWindow = function(window) {
 	window.element.addEventListener("touchstart",lime.ui.TouchEventManager.handleEvent,true);
 	window.element.addEventListener("touchmove",lime.ui.TouchEventManager.handleEvent,true);
 	window.element.addEventListener("touchend",lime.ui.TouchEventManager.handleEvent,true);
+	lime.ui.TouchEventManager.window = window;
 };
 lime.ui._TouchEventManager = {};
 lime.ui._TouchEventManager.TouchEventInfo = function(type,x,y,id) {
@@ -7534,9 +7313,6 @@ lime.ui._TouchEventManager.TouchEventInfo.prototype = {
 	}
 	,__class__: lime.ui._TouchEventManager.TouchEventInfo
 };
-lime.ui._TouchEventManager.TouchEventType_Impl_ = function() { };
-$hxClasses["lime.ui._TouchEventManager.TouchEventType_Impl_"] = lime.ui._TouchEventManager.TouchEventType_Impl_;
-lime.ui._TouchEventManager.TouchEventType_Impl_.__name__ = true;
 lime.ui._Window = {};
 lime.ui._Window.WindowEventInfo = function(type,width,height,x,y) {
 	if(y == null) y = 0;
@@ -7763,24 +7539,6 @@ lime.ui.Window.prototype = {
 						this.div.style.height = this.element.clientHeight + "px";
 					}
 				}
-			} else {
-				var scaleX = this.element.clientWidth / this.setWidth;
-				var scaleY = this.element.clientHeight / this.setHeight;
-				var currentRatio = scaleX / scaleY;
-				var targetRatio = Math.min(scaleX,scaleY);
-				if(this.canvas != null) {
-					if(this.element != this.canvas) {
-						this.canvas.style.width = this.setWidth * targetRatio + "px";
-						this.canvas.style.height = this.setHeight * targetRatio + "px";
-						this.canvas.style.marginLeft = (this.element.clientWidth - this.setWidth * targetRatio) / 2 + "px";
-						this.canvas.style.marginTop = (this.element.clientHeight - this.setHeight * targetRatio) / 2 + "px";
-					}
-				} else {
-					this.div.style.width = this.setWidth * targetRatio + "px";
-					this.div.style.height = this.setHeight * targetRatio + "px";
-					this.div.style.marginLeft = (this.element.clientWidth - this.setWidth * targetRatio) / 2 + "px";
-					this.div.style.marginTop = (this.element.clientHeight - this.setHeight * targetRatio) / 2 + "px";
-				}
 			}
 		}
 	}
@@ -7792,12 +7550,6 @@ lime.ui.Window.prototype = {
 	}
 	,__class__: lime.ui.Window
 };
-lime.ui._Window.WindowFlags_Impl_ = function() { };
-$hxClasses["lime.ui._Window.WindowFlags_Impl_"] = lime.ui._Window.WindowFlags_Impl_;
-lime.ui._Window.WindowFlags_Impl_.__name__ = true;
-lime.ui._Window.WindowEventType_Impl_ = function() { };
-$hxClasses["lime.ui._Window.WindowEventType_Impl_"] = lime.ui._Window.WindowEventType_Impl_;
-lime.ui._Window.WindowEventType_Impl_.__name__ = true;
 lime.utils = {};
 lime.utils.ByteArray = function(size) {
 	if(size == null) size = 0;
@@ -7805,7 +7557,9 @@ lime.utils.ByteArray = function(size) {
 	this.allocated = 0;
 	this.position = 0;
 	this.length = 0;
+	if(size > 0) this.allocated = size;
 	this.___resizeBuffer(this.allocated);
+	this.set_length(this.allocated);
 };
 $hxClasses["lime.utils.ByteArray"] = lime.utils.ByteArray;
 lime.utils.ByteArray.__name__ = true;
@@ -7833,7 +7587,13 @@ lime.utils.ByteArray.prototype = {
 		0;
 		this.position = 0;
 	}
+	,compress: function(algorithm) {
+	}
+	,deflate: function() {
+		this.compress(lime.utils.CompressionAlgorithm.DEFLATE);
+	}
 	,inflate: function() {
+		this.uncompress(lime.utils.CompressionAlgorithm.DEFLATE);
 	}
 	,readBoolean: function() {
 		return this.readByte() != 0;
@@ -7927,7 +7687,7 @@ lime.utils.ByteArray.prototype = {
 		return value;
 	}
 	,uncompress: function(algorithm) {
-		haxe.Log.trace("Warning: ByteArray.uncompress on JS target requires the 'format' haxelib",{ fileName : "ByteArray.hx", lineNumber : 551, className : "lime.utils.ByteArray", methodName : "uncompress"});
+		haxe.Log.trace("Warning: ByteArray.uncompress on JS target requires the 'format' haxelib",{ fileName : "ByteArray.hx", lineNumber : 615, className : "lime.utils.ByteArray", methodName : "uncompress"});
 	}
 	,write_uncheck: function($byte) {
 		__dollar__sset(b,this.position++,$byte & 255);
@@ -7949,25 +7709,9 @@ lime.utils.ByteArray.prototype = {
 	,writeBytes: function(bytes,offset,length) {
 		if(length == null) length = 0;
 		if(offset == null) offset = 0;
-		if((function($this) {
-			var $r;
-			var aNeg = 0 < 0;
-			var bNeg = offset < 0;
-			$r = aNeg != bNeg?aNeg:0 > offset;
-			return $r;
-		}(this)) || (function($this) {
-			var $r;
-			var aNeg1 = 0 < 0;
-			var bNeg1 = length < 0;
-			$r = aNeg1 != bNeg1?aNeg1:0 > length;
-			return $r;
-		}(this))) throw "Write error - Out of bounds";
-		if((function($this) {
-			var $r;
-			var $int = length;
-			$r = $int < 0?4294967296.0 + $int:$int + 0.0;
-			return $r;
-		}(this)) == 0) length = bytes.length;
+		if(bytes.length == 0) return;
+		if(_UInt.UInt_Impl_.gt(0,offset) || _UInt.UInt_Impl_.gt(0,length)) throw "Write error - Out of bounds";
+		if(length == 0) length = bytes.length;
 		var lengthToEnsure = this.position + length;
 		if(this.length < lengthToEnsure) {
 			if(this.allocated < lengthToEnsure) this.___resizeBuffer(this.allocated = Std["int"](Math.max(lengthToEnsure,this.allocated * 2))); else if(this.allocated > lengthToEnsure) this.___resizeBuffer(this.allocated = lengthToEnsure);
@@ -8115,6 +7859,20 @@ lime.utils.ByteArray.prototype = {
 	}
 	,__class__: lime.utils.ByteArray
 };
+lime.utils.CompressionAlgorithm = $hxClasses["lime.utils.CompressionAlgorithm"] = { __ename__ : true, __constructs__ : ["DEFLATE","ZLIB","LZMA","GZIP"] };
+lime.utils.CompressionAlgorithm.DEFLATE = ["DEFLATE",0];
+lime.utils.CompressionAlgorithm.DEFLATE.toString = $estr;
+lime.utils.CompressionAlgorithm.DEFLATE.__enum__ = lime.utils.CompressionAlgorithm;
+lime.utils.CompressionAlgorithm.ZLIB = ["ZLIB",1];
+lime.utils.CompressionAlgorithm.ZLIB.toString = $estr;
+lime.utils.CompressionAlgorithm.ZLIB.__enum__ = lime.utils.CompressionAlgorithm;
+lime.utils.CompressionAlgorithm.LZMA = ["LZMA",2];
+lime.utils.CompressionAlgorithm.LZMA.toString = $estr;
+lime.utils.CompressionAlgorithm.LZMA.__enum__ = lime.utils.CompressionAlgorithm;
+lime.utils.CompressionAlgorithm.GZIP = ["GZIP",3];
+lime.utils.CompressionAlgorithm.GZIP.toString = $estr;
+lime.utils.CompressionAlgorithm.GZIP.__enum__ = lime.utils.CompressionAlgorithm;
+lime.utils.CompressionAlgorithm.__empty_constructs__ = [lime.utils.CompressionAlgorithm.DEFLATE,lime.utils.CompressionAlgorithm.ZLIB,lime.utils.CompressionAlgorithm.LZMA,lime.utils.CompressionAlgorithm.GZIP];
 lime.utils.IDataInput = function() { };
 $hxClasses["lime.utils.IDataInput"] = lime.utils.IDataInput;
 lime.utils.IDataInput.__name__ = true;
@@ -8333,16 +8091,7 @@ function $bind(o,m) { if( m == null ) return null; if( m.__id__ == null ) m.__id
 if(Array.prototype.indexOf) HxOverrides.indexOf = function(a,o,i) {
 	return Array.prototype.indexOf.call(a,o,i);
 };
-Math.NaN = Number.NaN;
-Math.NEGATIVE_INFINITY = Number.NEGATIVE_INFINITY;
-Math.POSITIVE_INFINITY = Number.POSITIVE_INFINITY;
 $hxClasses.Math = Math;
-Math.isFinite = function(i) {
-	return isFinite(i);
-};
-Math.isNaN = function(i1) {
-	return isNaN(i1);
-};
 String.prototype.__class__ = $hxClasses.String = String;
 String.__name__ = true;
 $hxClasses.Array = Array;
@@ -8384,21 +8133,11 @@ lime.app.Application.__eventInfo = new lime.app._Application.UpdateEventInfo();
 Main.OFFSCREEN_RENDER = true;
 gltoolbox.GeometryTools.textureQuadCache = new haxe.ds.IntMap();
 gltoolbox.GeometryTools.clipSpaceQuadCache = new haxe.ds.IntMap();
+js.Boot.__toStr = {}.toString;
 gltoolbox.shaders.Resample.instance = new gltoolbox.shaders.Resample();
-haxe.Unserializer.DEFAULT_RESOLVER = Type;
-haxe.Unserializer.BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789%:";
-haxe.ds.ObjectMap.count = 0;
 lime.Assets.cache = new lime.AssetCache();
 lime.Assets.libraries = new haxe.ds.StringMap();
 lime.Assets.initialized = false;
-lime._Assets.AssetType_Impl_.BINARY = "BINARY";
-lime._Assets.AssetType_Impl_.FONT = "FONT";
-lime._Assets.AssetType_Impl_.IMAGE = "IMAGE";
-lime._Assets.AssetType_Impl_.MUSIC = "MUSIC";
-lime._Assets.AssetType_Impl_.SOUND = "SOUND";
-lime._Assets.AssetType_Impl_.TEMPLATE = "TEMPLATE";
-lime._Assets.AssetType_Impl_.TEXT = "TEXT";
-lime.app._Application.UpdateEventType_Impl_.UPDATE = 0;
 lime.app.Preloader.images = new haxe.ds.StringMap();
 lime.app.Preloader.loaders = new haxe.ds.StringMap();
 lime.audio.openal.AL.NONE = 0;
@@ -8487,7 +8226,6 @@ lime.audio.openal.ALC.ALL_DEVICES_SPECIFIER = 4115;
 lime.graphics.Image.__base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 lime.graphics.Renderer.onRender = new lime.app.Event();
 lime.graphics.Renderer.eventInfo = new lime.graphics._Renderer.RenderEventInfo();
-lime.graphics._Renderer.RenderEventType_Impl_.RENDER = 0;
 lime.graphics.opengl.GL.DEPTH_BUFFER_BIT = 256;
 lime.graphics.opengl.GL.STENCIL_BUFFER_BIT = 1024;
 lime.graphics.opengl.GL.COLOR_BUFFER_BIT = 16384;
@@ -8787,607 +8525,21 @@ lime.graphics.opengl.GL.UNPACK_COLORSPACE_CONVERSION_WEBGL = 37443;
 lime.graphics.opengl.GL.BROWSER_DEFAULT_WEBGL = 37444;
 lime.math._ColorMatrix.ColorMatrix_Impl_.__identity = [1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,1.0,0.0];
 lime.math.Matrix3.__identity = new lime.math.Matrix3();
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.DELETE = "DELETE";
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.GET = "GET";
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.HEAD = "HEAD";
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.OPTIONS = "OPTIONS";
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.POST = "POST";
-lime.net._URLRequestMethod.URLRequestMethod_Impl_.PUT = "PUT";
 lime.net.curl._CURL.CURL_Impl_.GLOBAL_SSL = 1;
 lime.net.curl._CURL.CURL_Impl_.GLOBAL_WIN32 = 2;
 lime.net.curl._CURL.CURL_Impl_.GLOBAL_ALL = 3;
 lime.net.curl._CURL.CURL_Impl_.GLOBAL_NOTHING = 0;
 lime.net.curl._CURL.CURL_Impl_.GLOBAL_DEFAULT = 3;
 lime.net.curl._CURL.CURL_Impl_.GLOBAL_ACK_EINTR = 4;
-lime.net.curl._CURLCode.CURLCode_Impl_.OK = 0;
-lime.net.curl._CURLCode.CURLCode_Impl_.UNSUPPORTED_PROTOCOL = 1;
-lime.net.curl._CURLCode.CURLCode_Impl_.FAILED_INIT = 2;
-lime.net.curl._CURLCode.CURLCode_Impl_.URL_MALFORMAT = 3;
-lime.net.curl._CURLCode.CURLCode_Impl_.NOT_BUILT_IN = 4;
-lime.net.curl._CURLCode.CURLCode_Impl_.COULDNT_RESOLVE_PROXY = 5;
-lime.net.curl._CURLCode.CURLCode_Impl_.COULDNT_RESOLVE_HOST = 6;
-lime.net.curl._CURLCode.CURLCode_Impl_.COULDNT_CONNECT = 7;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_WEIRD_SERVER_REPLY = 8;
-lime.net.curl._CURLCode.CURLCode_Impl_.REMOTE_ACCESS_DENIED = 9;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_ACCEPT_FAILED = 10;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_WEIRD_PASS_REPLY = 11;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_ACCEPT_TIMEOUT = 12;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_WEIRD_PASV_REPLY = 13;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_WEIRD_227_FORMAT = 14;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_CANT_GET_HOST = 15;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_COULDNT_SET_TYPE = 17;
-lime.net.curl._CURLCode.CURLCode_Impl_.PARTIAL_FILE = 18;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_COULDNT_RETR_FILE = 19;
-lime.net.curl._CURLCode.CURLCode_Impl_.QUOTE_ERROR = 21;
-lime.net.curl._CURLCode.CURLCode_Impl_.HTTP_RETURNED_ERROR = 22;
-lime.net.curl._CURLCode.CURLCode_Impl_.WRITE_ERROR = 23;
-lime.net.curl._CURLCode.CURLCode_Impl_.UPLOAD_FAILED = 25;
-lime.net.curl._CURLCode.CURLCode_Impl_.READ_ERROR = 26;
-lime.net.curl._CURLCode.CURLCode_Impl_.OUT_OF_MEMORY = 27;
-lime.net.curl._CURLCode.CURLCode_Impl_.OPERATION_TIMEDOUT = 28;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_PORT_FAILED = 30;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_COULDNT_USE_REST = 31;
-lime.net.curl._CURLCode.CURLCode_Impl_.RANGE_ERROR = 33;
-lime.net.curl._CURLCode.CURLCode_Impl_.HTTP_POST_ERROR = 34;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_CONNECT_ERROR = 35;
-lime.net.curl._CURLCode.CURLCode_Impl_.BAD_DOWNLOAD_RESUME = 36;
-lime.net.curl._CURLCode.CURLCode_Impl_.FILE_COULDNT_READ_FILE = 37;
-lime.net.curl._CURLCode.CURLCode_Impl_.LDAP_CANNOT_BIND = 38;
-lime.net.curl._CURLCode.CURLCode_Impl_.LDAP_SEARCH_FAILED = 39;
-lime.net.curl._CURLCode.CURLCode_Impl_.FUNCTION_NOT_FOUND = 41;
-lime.net.curl._CURLCode.CURLCode_Impl_.ABORTED_BY_CALLBACK = 42;
-lime.net.curl._CURLCode.CURLCode_Impl_.BAD_FUNCTION_ARGUMENT = 43;
-lime.net.curl._CURLCode.CURLCode_Impl_.INTERFACE_FAILED = 45;
-lime.net.curl._CURLCode.CURLCode_Impl_.TOO_MANY_REDIRECTS = 47;
-lime.net.curl._CURLCode.CURLCode_Impl_.UNKNOWN_OPTION = 48;
-lime.net.curl._CURLCode.CURLCode_Impl_.TELNET_OPTION_SYNTAX = 49;
-lime.net.curl._CURLCode.CURLCode_Impl_.PEER_FAILED_VERIFICATION = 51;
-lime.net.curl._CURLCode.CURLCode_Impl_.GOT_NOTHING = 52;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_ENGINE_NOTFOUND = 53;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_ENGINE_SETFAILED = 54;
-lime.net.curl._CURLCode.CURLCode_Impl_.SEND_ERROR = 55;
-lime.net.curl._CURLCode.CURLCode_Impl_.RECV_ERROR = 56;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_CERTPROBLEM = 58;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_CIPHER = 59;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_CACERT = 60;
-lime.net.curl._CURLCode.CURLCode_Impl_.BAD_CONTENT_ENCODING = 61;
-lime.net.curl._CURLCode.CURLCode_Impl_.LDAP_INVALID_URL = 62;
-lime.net.curl._CURLCode.CURLCode_Impl_.FILESIZE_EXCEEDED = 63;
-lime.net.curl._CURLCode.CURLCode_Impl_.USE_SSL_FAILED = 64;
-lime.net.curl._CURLCode.CURLCode_Impl_.SEND_FAIL_REWIND = 65;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_ENGINE_INITFAILED = 66;
-lime.net.curl._CURLCode.CURLCode_Impl_.LOGIN_DENIED = 67;
-lime.net.curl._CURLCode.CURLCode_Impl_.TFTP_NOTFOUND = 68;
-lime.net.curl._CURLCode.CURLCode_Impl_.TFTP_PERM = 69;
-lime.net.curl._CURLCode.CURLCode_Impl_.REMOTE_DISK_FULL = 70;
-lime.net.curl._CURLCode.CURLCode_Impl_.TFTP_ILLEGAL = 71;
-lime.net.curl._CURLCode.CURLCode_Impl_.TFTP_UNKNOWNID = 72;
-lime.net.curl._CURLCode.CURLCode_Impl_.REMOTE_FILE_EXISTS = 73;
-lime.net.curl._CURLCode.CURLCode_Impl_.TFTP_NOSUCHUSER = 74;
-lime.net.curl._CURLCode.CURLCode_Impl_.CONV_FAILED = 75;
-lime.net.curl._CURLCode.CURLCode_Impl_.CONV_REQD = 76;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_CACERT_BADFILE = 77;
-lime.net.curl._CURLCode.CURLCode_Impl_.REMOTE_FILE_NOT_FOUND = 78;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSH = 79;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_SHUTDOWN_FAILED = 80;
-lime.net.curl._CURLCode.CURLCode_Impl_.AGAIN = 81;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_CRL_BADFILE = 82;
-lime.net.curl._CURLCode.CURLCode_Impl_.SSL_ISSUER_ERROR = 83;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_PRET_FAILED = 84;
-lime.net.curl._CURLCode.CURLCode_Impl_.RTSP_CSEQ_ERROR = 85;
-lime.net.curl._CURLCode.CURLCode_Impl_.RTSP_SESSION_ERROR = 86;
-lime.net.curl._CURLCode.CURLCode_Impl_.FTP_BAD_FILE_LIST = 87;
-lime.net.curl._CURLCode.CURLCode_Impl_.CHUNK_FAILED = 88;
-lime.net.curl._CURLCode.CURLCode_Impl_.NO_CONNECTION_AVAILABLE = 89;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.NONE = 0;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.EFFECTIVE_URL = 1048577;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.RESPONSE_CODE = 2097154;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.TOTAL_TIME = 3145731;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.NAMELOOKUP_TIME = 3145732;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.CONNECT_TIME = 3145733;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.PRETRANSFER_TIME = 3145734;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.SIZE_UPLOAD = 3145735;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.SIZE_DOWNLOAD = 3145736;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.SPEED_DOWNLOAD = 3145737;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.SPEED_UPLOAD = 3145738;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.HEADER_SIZE = 2097163;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.REQUEST_SIZE = 2097164;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.SSL_VERIFYRESULT = 2097165;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.FILETIME = 2097166;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.CONTENT_LENGTH_DOWNLOAD = 3145743;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.CONTENT_LENGTH_UPLOAD = 3145744;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.STARTTRANSFER_TIME = 3145745;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.CONTENT_TYPE = 1048594;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.REDIRECT_TIME = 3145747;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.REDIRECT_COUNT = 2097172;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.PRIVATE = 1048597;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.HTTP_CONNECTCODE = 2097174;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.HTTPAUTH_AVAIL = 2097175;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.PROXYAUTH_AVAIL = 2097176;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.OS_ERRNO = 2097177;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.NUM_CONNECTS = 2097178;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.SSL_ENGINES = 4194331;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.COOKIELIST = 4194332;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.LASTSOCKET = 2097181;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.FTP_ENTRY_PATH = 1048606;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.REDIRECT_URL = 1048607;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.PRIMARY_IP = 1048608;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.APPCONNECT_TIME = 3145761;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.CERTINFO = 4194338;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.CONDITION_UNMET = 2097187;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.RTSP_SESSION_ID = 1048612;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.RTSP_CLIENT_CSEQ = 2097189;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.RTSP_SERVER_CSEQ = 2097190;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.RTSP_CSEQ_RECV = 2097191;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.PRIMARY_PORT = 2097192;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.LOCAL_IP = 1048617;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.LOCAL_PORT = 2097194;
-lime.net.curl._CURLInfo.CURLInfo_Impl_.TLS_SESSION = 4194347;
-lime.net.curl._CURLOption.CURLOption_Impl_.URL = 10002;
-lime.net.curl._CURLOption.CURLOption_Impl_.PORT = 3;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXY = 10004;
-lime.net.curl._CURLOption.CURLOption_Impl_.USERPWD = 10005;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXYUSERPWD = 10006;
-lime.net.curl._CURLOption.CURLOption_Impl_.RANGE = 10007;
-lime.net.curl._CURLOption.CURLOption_Impl_.ERRORBUFFER = 10010;
-lime.net.curl._CURLOption.CURLOption_Impl_.WRITEFUNCTION = 20011;
-lime.net.curl._CURLOption.CURLOption_Impl_.READFUNCTION = 20012;
-lime.net.curl._CURLOption.CURLOption_Impl_.TIMEOUT = 13;
-lime.net.curl._CURLOption.CURLOption_Impl_.INFILESIZE = 14;
-lime.net.curl._CURLOption.CURLOption_Impl_.POSTFIELDS = 10015;
-lime.net.curl._CURLOption.CURLOption_Impl_.REFERER = 10016;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTPPORT = 10017;
-lime.net.curl._CURLOption.CURLOption_Impl_.USERAGENT = 10018;
-lime.net.curl._CURLOption.CURLOption_Impl_.LOW_SPEED_LIMIT = 19;
-lime.net.curl._CURLOption.CURLOption_Impl_.LOW_SPEED_TIME = 20;
-lime.net.curl._CURLOption.CURLOption_Impl_.RESUME_FROM = 21;
-lime.net.curl._CURLOption.CURLOption_Impl_.COOKIE = 22;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTPHEADER = 10023;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSPHEADER = 10023;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTPPOST = 10024;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLCERT = 10025;
-lime.net.curl._CURLOption.CURLOption_Impl_.KEYPASSWD = 10026;
-lime.net.curl._CURLOption.CURLOption_Impl_.CRLF = 27;
-lime.net.curl._CURLOption.CURLOption_Impl_.QUOTE = 10028;
-lime.net.curl._CURLOption.CURLOption_Impl_.WRITEHEADER = 10029;
-lime.net.curl._CURLOption.CURLOption_Impl_.HEADERDATA = 10029;
-lime.net.curl._CURLOption.CURLOption_Impl_.COOKIEFILE = 10031;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLVERSION = 32;
-lime.net.curl._CURLOption.CURLOption_Impl_.TIMECONDITION = 33;
-lime.net.curl._CURLOption.CURLOption_Impl_.TIMEVALUE = 34;
-lime.net.curl._CURLOption.CURLOption_Impl_.CUSTOMREQUEST = 10036;
-lime.net.curl._CURLOption.CURLOption_Impl_.STDERR = 10037;
-lime.net.curl._CURLOption.CURLOption_Impl_.POSTQUOTE = 10039;
-lime.net.curl._CURLOption.CURLOption_Impl_.WRITEINFO = 10040;
-lime.net.curl._CURLOption.CURLOption_Impl_.VERBOSE = 41;
-lime.net.curl._CURLOption.CURLOption_Impl_.HEADER = 42;
-lime.net.curl._CURLOption.CURLOption_Impl_.NOPROGRESS = 43;
-lime.net.curl._CURLOption.CURLOption_Impl_.NOBODY = 44;
-lime.net.curl._CURLOption.CURLOption_Impl_.FAILONERROR = 45;
-lime.net.curl._CURLOption.CURLOption_Impl_.UPLOAD = 46;
-lime.net.curl._CURLOption.CURLOption_Impl_.POST = 47;
-lime.net.curl._CURLOption.CURLOption_Impl_.DIRLISTONLY = 48;
-lime.net.curl._CURLOption.CURLOption_Impl_.APPEND = 50;
-lime.net.curl._CURLOption.CURLOption_Impl_.NETRC = 51;
-lime.net.curl._CURLOption.CURLOption_Impl_.FOLLOWLOCATION = 52;
-lime.net.curl._CURLOption.CURLOption_Impl_.TRANSFERTEXT = 53;
-lime.net.curl._CURLOption.CURLOption_Impl_.PUT = 54;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROGRESSFUNCTION = 20056;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROGRESSDATA = 10057;
-lime.net.curl._CURLOption.CURLOption_Impl_.XFERINFODATA = 10057;
-lime.net.curl._CURLOption.CURLOption_Impl_.AUTOREFERER = 58;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXYPORT = 59;
-lime.net.curl._CURLOption.CURLOption_Impl_.POSTFIELDSIZE = 60;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTPPROXYTUNNEL = 61;
-lime.net.curl._CURLOption.CURLOption_Impl_.INTERFACE = 10062;
-lime.net.curl._CURLOption.CURLOption_Impl_.KRBLEVEL = 10063;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_VERIFYPEER = 64;
-lime.net.curl._CURLOption.CURLOption_Impl_.CAINFO = 10065;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAXREDIRS = 68;
-lime.net.curl._CURLOption.CURLOption_Impl_.FILETIME = 69;
-lime.net.curl._CURLOption.CURLOption_Impl_.TELNETOPTIONS = 10070;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAXCONNECTS = 71;
-lime.net.curl._CURLOption.CURLOption_Impl_.CLOSEPOLICY = 72;
-lime.net.curl._CURLOption.CURLOption_Impl_.FRESH_CONNECT = 74;
-lime.net.curl._CURLOption.CURLOption_Impl_.FORBID_REUSE = 75;
-lime.net.curl._CURLOption.CURLOption_Impl_.RANDOM_FILE = 10076;
-lime.net.curl._CURLOption.CURLOption_Impl_.EGDSOCKET = 10077;
-lime.net.curl._CURLOption.CURLOption_Impl_.CONNECTTIMEOUT = 78;
-lime.net.curl._CURLOption.CURLOption_Impl_.HEADERFUNCTION = 20079;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTPGET = 80;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_VERIFYHOST = 81;
-lime.net.curl._CURLOption.CURLOption_Impl_.COOKIEJAR = 10082;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_CIPHER_LIST = 10083;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTP_VERSION = 84;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_USE_EPSV = 85;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLCERTTYPE = 10086;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLKEY = 10087;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLKEYTYPE = 10088;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLENGINE = 10089;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSLENGINE_DEFAULT = 90;
-lime.net.curl._CURLOption.CURLOption_Impl_.DNS_USE_GLOBAL_CACHE = 91;
-lime.net.curl._CURLOption.CURLOption_Impl_.DNS_CACHE_TIMEOUT = 92;
-lime.net.curl._CURLOption.CURLOption_Impl_.PREQUOTE = 10093;
-lime.net.curl._CURLOption.CURLOption_Impl_.DEBUGFUNCTION = 20094;
-lime.net.curl._CURLOption.CURLOption_Impl_.DEBUGDATA = 10095;
-lime.net.curl._CURLOption.CURLOption_Impl_.COOKIESESSION = 96;
-lime.net.curl._CURLOption.CURLOption_Impl_.CAPATH = 10097;
-lime.net.curl._CURLOption.CURLOption_Impl_.BUFFERSIZE = 98;
-lime.net.curl._CURLOption.CURLOption_Impl_.NOSIGNAL = 99;
-lime.net.curl._CURLOption.CURLOption_Impl_.SHARE = 10100;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXYTYPE = 101;
-lime.net.curl._CURLOption.CURLOption_Impl_.ACCEPT_ENCODING = 10102;
-lime.net.curl._CURLOption.CURLOption_Impl_.PRIVATE = 10103;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTP200ALIASES = 10104;
-lime.net.curl._CURLOption.CURLOption_Impl_.UNRESTRICTED_AUTH = 105;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_USE_EPRT = 106;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTPAUTH = 107;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_CTX_FUNCTION = 20108;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_CTX_DATA = 10109;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_CREATE_MISSING_DIRS = 110;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXYAUTH = 111;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_RESPONSE_TIMEOUT = 112;
-lime.net.curl._CURLOption.CURLOption_Impl_.SERVER_RESPONSE_TIMEOUT = 112;
-lime.net.curl._CURLOption.CURLOption_Impl_.IPRESOLVE = 113;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAXFILESIZE = 114;
-lime.net.curl._CURLOption.CURLOption_Impl_.INFILESIZE_LARGE = 30115;
-lime.net.curl._CURLOption.CURLOption_Impl_.RESUME_FROM_LARGE = 30116;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAXFILESIZE_LARGE = 30117;
-lime.net.curl._CURLOption.CURLOption_Impl_.NETRC_FILE = 10118;
-lime.net.curl._CURLOption.CURLOption_Impl_.USE_SSL = 119;
-lime.net.curl._CURLOption.CURLOption_Impl_.POSTFIELDSIZE_LARGE = 30120;
-lime.net.curl._CURLOption.CURLOption_Impl_.TCP_NODELAY = 121;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTPSSLAUTH = 129;
-lime.net.curl._CURLOption.CURLOption_Impl_.IOCTLFUNCTION = 20130;
-lime.net.curl._CURLOption.CURLOption_Impl_.IOCTLDATA = 10131;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_ACCOUNT = 10134;
-lime.net.curl._CURLOption.CURLOption_Impl_.COOKIELIST = 10135;
-lime.net.curl._CURLOption.CURLOption_Impl_.IGNORE_CONTENT_LENGTH = 10136;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_SKIP_PASV_IP = 137;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_FILEMETHOD = 138;
-lime.net.curl._CURLOption.CURLOption_Impl_.LOCALPORT = 139;
-lime.net.curl._CURLOption.CURLOption_Impl_.LOCALPORTRANGE = 140;
-lime.net.curl._CURLOption.CURLOption_Impl_.CONNECT_ONLY = 141;
-lime.net.curl._CURLOption.CURLOption_Impl_.CONV_FROM_NETWORK_FUNCTION = 20142;
-lime.net.curl._CURLOption.CURLOption_Impl_.CONV_TO_NETWORK_FUNCTION = 20143;
-lime.net.curl._CURLOption.CURLOption_Impl_.CONV_FROM_UTF8_FUNCTION = 20144;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAX_SEND_SPEED_LARGE = 30145;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAX_RECV_SPEED_LARGE = 30146;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_ALTERNATIVE_TO_USER = 10147;
-lime.net.curl._CURLOption.CURLOption_Impl_.SOCKOPTFUNCTION = 20148;
-lime.net.curl._CURLOption.CURLOption_Impl_.SOCKOPTDATA = 10149;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_SESSIONID_CACHE = 150;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_AUTH_TYPES = 151;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_PUBLIC_KEYFILE = 10152;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_PRIVATE_KEYFILE = 10153;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_SSL_CCC = 154;
-lime.net.curl._CURLOption.CURLOption_Impl_.TIMEOUT_MS = 155;
-lime.net.curl._CURLOption.CURLOption_Impl_.CONNECTTIMEOUT_MS = 156;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTP_TRANSFER_DECODING = 157;
-lime.net.curl._CURLOption.CURLOption_Impl_.HTTP_CONTENT_DECODING = 158;
-lime.net.curl._CURLOption.CURLOption_Impl_.NEW_FILE_PERMS = 159;
-lime.net.curl._CURLOption.CURLOption_Impl_.NEW_DIRECTORY_PERMS = 160;
-lime.net.curl._CURLOption.CURLOption_Impl_.POSTREDIR = 161;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_HOST_PUBLIC_KEY_MD5 = 10162;
-lime.net.curl._CURLOption.CURLOption_Impl_.OPENSOCKETFUNCTION = 20163;
-lime.net.curl._CURLOption.CURLOption_Impl_.OPENSOCKETDATA = 10164;
-lime.net.curl._CURLOption.CURLOption_Impl_.COPYPOSTFIELDS = 10165;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXY_TRANSFER_MODE = 166;
-lime.net.curl._CURLOption.CURLOption_Impl_.SEEKFUNCTION = 20167;
-lime.net.curl._CURLOption.CURLOption_Impl_.SEEKDATA = 10168;
-lime.net.curl._CURLOption.CURLOption_Impl_.CRLFILE = 10169;
-lime.net.curl._CURLOption.CURLOption_Impl_.ISSUERCERT = 10170;
-lime.net.curl._CURLOption.CURLOption_Impl_.ADDRESS_SCOPE = 171;
-lime.net.curl._CURLOption.CURLOption_Impl_.CERTINFO = 172;
-lime.net.curl._CURLOption.CURLOption_Impl_.USERNAME = 10173;
-lime.net.curl._CURLOption.CURLOption_Impl_.PASSWORD = 10174;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXYUSERNAME = 10175;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROXYPASSWORD = 10176;
-lime.net.curl._CURLOption.CURLOption_Impl_.NOPROXY = 10177;
-lime.net.curl._CURLOption.CURLOption_Impl_.TFTP_BLKSIZE = 178;
-lime.net.curl._CURLOption.CURLOption_Impl_.SOCKS5_GSSAPI_SERVICE = 10179;
-lime.net.curl._CURLOption.CURLOption_Impl_.SOCKS5_GSSAPI_NEC = 180;
-lime.net.curl._CURLOption.CURLOption_Impl_.PROTOCOLS = 181;
-lime.net.curl._CURLOption.CURLOption_Impl_.REDIR_PROTOCOLS = 182;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_KNOWNHOSTS = 10183;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_KEYFUNCTION = 20184;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSH_KEYDATA = 10185;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAIL_FROM = 10186;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAIL_RCPT = 10187;
-lime.net.curl._CURLOption.CURLOption_Impl_.FTP_USE_PRET = 188;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSP_REQUEST = 189;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSP_SESSION_ID = 10190;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSP_STREAM_URI = 10191;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSP_TRANSPORT = 10192;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSP_CLIENT_CSEQ = 193;
-lime.net.curl._CURLOption.CURLOption_Impl_.RTSP_SERVER_CSEQ = 194;
-lime.net.curl._CURLOption.CURLOption_Impl_.INTERLEAVEDATA = 10195;
-lime.net.curl._CURLOption.CURLOption_Impl_.INTERLEAVEFUNCTION = 20196;
-lime.net.curl._CURLOption.CURLOption_Impl_.WILDCARDMATCH = 197;
-lime.net.curl._CURLOption.CURLOption_Impl_.CHUNK_BGN_FUNCTION = 20198;
-lime.net.curl._CURLOption.CURLOption_Impl_.CHUNK_END_FUNCTION = 20199;
-lime.net.curl._CURLOption.CURLOption_Impl_.FNMATCH_FUNCTION = 20200;
-lime.net.curl._CURLOption.CURLOption_Impl_.CHUNK_DATA = 10201;
-lime.net.curl._CURLOption.CURLOption_Impl_.FNMATCH_DATA = 10202;
-lime.net.curl._CURLOption.CURLOption_Impl_.RESOLVE = 10203;
-lime.net.curl._CURLOption.CURLOption_Impl_.TLSAUTH_USERNAME = 10204;
-lime.net.curl._CURLOption.CURLOption_Impl_.TLSAUTH_PASSWORD = 10205;
-lime.net.curl._CURLOption.CURLOption_Impl_.TLSAUTH_TYPE = 10206;
-lime.net.curl._CURLOption.CURLOption_Impl_.TRANSFER_ENCODING = 207;
-lime.net.curl._CURLOption.CURLOption_Impl_.CLOSESOCKETFUNCTION = 20208;
-lime.net.curl._CURLOption.CURLOption_Impl_.CLOSESOCKETDATA = 10209;
-lime.net.curl._CURLOption.CURLOption_Impl_.GSSAPI_DELEGATION = 210;
-lime.net.curl._CURLOption.CURLOption_Impl_.DNS_SERVERS = 10211;
-lime.net.curl._CURLOption.CURLOption_Impl_.ACCEPTTIMEOUT_MS = 212;
-lime.net.curl._CURLOption.CURLOption_Impl_.TCP_KEEPALIVE = 213;
-lime.net.curl._CURLOption.CURLOption_Impl_.TCP_KEEPIDLE = 214;
-lime.net.curl._CURLOption.CURLOption_Impl_.TCP_KEEPINTVL = 215;
-lime.net.curl._CURLOption.CURLOption_Impl_.SSL_OPTIONS = 216;
-lime.net.curl._CURLOption.CURLOption_Impl_.MAIL_AUTH = 10217;
-lime.net.curl._CURLOption.CURLOption_Impl_.SASL_IR = 218;
-lime.net.curl._CURLOption.CURLOption_Impl_.XFERINFOFUNCTION = 20219;
-lime.net.curl._CURLOption.CURLOption_Impl_.XOAUTH2_BEARER = 10220;
-lime.net.curl._CURLOption.CURLOption_Impl_.DNS_INTERFACE = 10221;
-lime.net.curl._CURLOption.CURLOption_Impl_.DNS_LOCAL_IP4 = 10222;
-lime.net.curl._CURLOption.CURLOption_Impl_.DNS_LOCAL_IP6 = 10223;
-lime.net.curl._CURLOption.CURLOption_Impl_.LOGIN_OPTIONS = 10224;
-lime.net.curl._CURLVersion.CURLVersion_Impl_.FIRST = 0;
-lime.net.curl._CURLVersion.CURLVersion_Impl_.SECOND = 1;
-lime.net.curl._CURLVersion.CURLVersion_Impl_.THIRD = 2;
-lime.net.curl._CURLVersion.CURLVersion_Impl_.FOURTH = 3;
-lime.ui._KeyCode.KeyCode_Impl_.UNKNOWN = 0;
-lime.ui._KeyCode.KeyCode_Impl_.BACKSPACE = 8;
-lime.ui._KeyCode.KeyCode_Impl_.TAB = 9;
-lime.ui._KeyCode.KeyCode_Impl_.RETURN = 13;
-lime.ui._KeyCode.KeyCode_Impl_.ESCAPE = 27;
-lime.ui._KeyCode.KeyCode_Impl_.SPACE = 32;
-lime.ui._KeyCode.KeyCode_Impl_.EXCLAMATION = 33;
-lime.ui._KeyCode.KeyCode_Impl_.QUOTE = 34;
-lime.ui._KeyCode.KeyCode_Impl_.HASH = 35;
-lime.ui._KeyCode.KeyCode_Impl_.DOLLAR = 36;
-lime.ui._KeyCode.KeyCode_Impl_.PERCENT = 37;
-lime.ui._KeyCode.KeyCode_Impl_.AMPERSAND = 38;
-lime.ui._KeyCode.KeyCode_Impl_.SINGLE_QUOTE = 39;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT_PARENTHESIS = 40;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT_PARENTHESIS = 41;
-lime.ui._KeyCode.KeyCode_Impl_.ASTERISK = 42;
-lime.ui._KeyCode.KeyCode_Impl_.PLUS = 43;
-lime.ui._KeyCode.KeyCode_Impl_.COMMA = 44;
-lime.ui._KeyCode.KeyCode_Impl_.MINUS = 45;
-lime.ui._KeyCode.KeyCode_Impl_.PERIOD = 46;
-lime.ui._KeyCode.KeyCode_Impl_.SLASH = 47;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_0 = 48;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_1 = 49;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_2 = 50;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_3 = 51;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_4 = 52;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_5 = 53;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_6 = 54;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_7 = 55;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_8 = 56;
-lime.ui._KeyCode.KeyCode_Impl_.NUMBER_9 = 57;
-lime.ui._KeyCode.KeyCode_Impl_.COLON = 58;
-lime.ui._KeyCode.KeyCode_Impl_.SEMICOLON = 59;
-lime.ui._KeyCode.KeyCode_Impl_.LESS_THAN = 60;
-lime.ui._KeyCode.KeyCode_Impl_.EQUALS = 61;
-lime.ui._KeyCode.KeyCode_Impl_.GREATER_THAN = 62;
-lime.ui._KeyCode.KeyCode_Impl_.QUESTION = 63;
-lime.ui._KeyCode.KeyCode_Impl_.AT = 64;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT_BRACKET = 91;
-lime.ui._KeyCode.KeyCode_Impl_.BACKSLASH = 92;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT_BRACKET = 93;
-lime.ui._KeyCode.KeyCode_Impl_.CARET = 94;
-lime.ui._KeyCode.KeyCode_Impl_.UNDERSCORE = 95;
-lime.ui._KeyCode.KeyCode_Impl_.GRAVE = 96;
-lime.ui._KeyCode.KeyCode_Impl_.A = 97;
-lime.ui._KeyCode.KeyCode_Impl_.B = 98;
-lime.ui._KeyCode.KeyCode_Impl_.C = 99;
-lime.ui._KeyCode.KeyCode_Impl_.D = 100;
-lime.ui._KeyCode.KeyCode_Impl_.E = 101;
-lime.ui._KeyCode.KeyCode_Impl_.F = 102;
-lime.ui._KeyCode.KeyCode_Impl_.G = 103;
-lime.ui._KeyCode.KeyCode_Impl_.H = 104;
-lime.ui._KeyCode.KeyCode_Impl_.I = 105;
-lime.ui._KeyCode.KeyCode_Impl_.J = 106;
-lime.ui._KeyCode.KeyCode_Impl_.K = 107;
-lime.ui._KeyCode.KeyCode_Impl_.L = 108;
-lime.ui._KeyCode.KeyCode_Impl_.M = 109;
-lime.ui._KeyCode.KeyCode_Impl_.N = 110;
-lime.ui._KeyCode.KeyCode_Impl_.O = 111;
-lime.ui._KeyCode.KeyCode_Impl_.P = 112;
-lime.ui._KeyCode.KeyCode_Impl_.Q = 113;
-lime.ui._KeyCode.KeyCode_Impl_.R = 114;
-lime.ui._KeyCode.KeyCode_Impl_.S = 115;
-lime.ui._KeyCode.KeyCode_Impl_.T = 116;
-lime.ui._KeyCode.KeyCode_Impl_.U = 117;
-lime.ui._KeyCode.KeyCode_Impl_.V = 118;
-lime.ui._KeyCode.KeyCode_Impl_.W = 119;
-lime.ui._KeyCode.KeyCode_Impl_.X = 120;
-lime.ui._KeyCode.KeyCode_Impl_.Y = 121;
-lime.ui._KeyCode.KeyCode_Impl_.Z = 122;
-lime.ui._KeyCode.KeyCode_Impl_.DELETE = 127;
-lime.ui._KeyCode.KeyCode_Impl_.CAPS_LOCK = 1073741881;
-lime.ui._KeyCode.KeyCode_Impl_.F1 = 1073741882;
-lime.ui._KeyCode.KeyCode_Impl_.F2 = 1073741883;
-lime.ui._KeyCode.KeyCode_Impl_.F3 = 1073741884;
-lime.ui._KeyCode.KeyCode_Impl_.F4 = 1073741885;
-lime.ui._KeyCode.KeyCode_Impl_.F5 = 1073741886;
-lime.ui._KeyCode.KeyCode_Impl_.F6 = 1073741887;
-lime.ui._KeyCode.KeyCode_Impl_.F7 = 1073741888;
-lime.ui._KeyCode.KeyCode_Impl_.F8 = 1073741889;
-lime.ui._KeyCode.KeyCode_Impl_.F9 = 1073741890;
-lime.ui._KeyCode.KeyCode_Impl_.F10 = 1073741891;
-lime.ui._KeyCode.KeyCode_Impl_.F11 = 1073741892;
-lime.ui._KeyCode.KeyCode_Impl_.F12 = 1073741893;
-lime.ui._KeyCode.KeyCode_Impl_.PRINT_SCREEN = 1073741894;
-lime.ui._KeyCode.KeyCode_Impl_.SCROLL_LOCK = 1073741895;
-lime.ui._KeyCode.KeyCode_Impl_.PAUSE = 1073741896;
-lime.ui._KeyCode.KeyCode_Impl_.INSERT = 1073741897;
-lime.ui._KeyCode.KeyCode_Impl_.HOME = 1073741898;
-lime.ui._KeyCode.KeyCode_Impl_.PAGE_UP = 1073741899;
-lime.ui._KeyCode.KeyCode_Impl_.END = 1073741901;
-lime.ui._KeyCode.KeyCode_Impl_.PAGE_DOWN = 1073741902;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT = 1073741903;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT = 1073741904;
-lime.ui._KeyCode.KeyCode_Impl_.DOWN = 1073741905;
-lime.ui._KeyCode.KeyCode_Impl_.UP = 1073741906;
-lime.ui._KeyCode.KeyCode_Impl_.NUM_LOCK = 1073741907;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_DIVIDE = 1073741908;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MULTIPLY = 1073741909;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MINUS = 1073741910;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_PLUS = 1073741911;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_ENTER = 1073741912;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_1 = 1073741913;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_2 = 1073741914;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_3 = 1073741915;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_4 = 1073741916;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_5 = 1073741917;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_6 = 1073741918;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_7 = 1073741919;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_8 = 1073741920;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_9 = 1073741921;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_0 = 1073741922;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_PERIOD = 1073741923;
-lime.ui._KeyCode.KeyCode_Impl_.APPLICATION = 1073741925;
-lime.ui._KeyCode.KeyCode_Impl_.POWER = 1073741926;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_EQUALS = 1073741927;
-lime.ui._KeyCode.KeyCode_Impl_.F13 = 1073741928;
-lime.ui._KeyCode.KeyCode_Impl_.F14 = 1073741929;
-lime.ui._KeyCode.KeyCode_Impl_.F15 = 1073741930;
-lime.ui._KeyCode.KeyCode_Impl_.F16 = 1073741931;
-lime.ui._KeyCode.KeyCode_Impl_.F17 = 1073741932;
-lime.ui._KeyCode.KeyCode_Impl_.F18 = 1073741933;
-lime.ui._KeyCode.KeyCode_Impl_.F19 = 1073741934;
-lime.ui._KeyCode.KeyCode_Impl_.F20 = 1073741935;
-lime.ui._KeyCode.KeyCode_Impl_.F21 = 1073741936;
-lime.ui._KeyCode.KeyCode_Impl_.F22 = 1073741937;
-lime.ui._KeyCode.KeyCode_Impl_.F23 = 1073741938;
-lime.ui._KeyCode.KeyCode_Impl_.F24 = 1073741939;
-lime.ui._KeyCode.KeyCode_Impl_.EXECUTE = 1073741940;
-lime.ui._KeyCode.KeyCode_Impl_.HELP = 1073741941;
-lime.ui._KeyCode.KeyCode_Impl_.MENU = 1073741942;
-lime.ui._KeyCode.KeyCode_Impl_.SELECT = 1073741943;
-lime.ui._KeyCode.KeyCode_Impl_.STOP = 1073741944;
-lime.ui._KeyCode.KeyCode_Impl_.AGAIN = 1073741945;
-lime.ui._KeyCode.KeyCode_Impl_.UNDO = 1073741946;
-lime.ui._KeyCode.KeyCode_Impl_.CUT = 1073741947;
-lime.ui._KeyCode.KeyCode_Impl_.COPY = 1073741948;
-lime.ui._KeyCode.KeyCode_Impl_.PASTE = 1073741949;
-lime.ui._KeyCode.KeyCode_Impl_.FIND = 1073741950;
-lime.ui._KeyCode.KeyCode_Impl_.MUTE = 1073741951;
-lime.ui._KeyCode.KeyCode_Impl_.VOLUME_UP = 1073741952;
-lime.ui._KeyCode.KeyCode_Impl_.VOLUME_DOWN = 1073741953;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_COMMA = 1073741957;
-lime.ui._KeyCode.KeyCode_Impl_.ALT_ERASE = 1073741977;
-lime.ui._KeyCode.KeyCode_Impl_.SYSTEM_REQUEST = 1073741978;
-lime.ui._KeyCode.KeyCode_Impl_.CANCEL = 1073741979;
-lime.ui._KeyCode.KeyCode_Impl_.CLEAR = 1073741980;
-lime.ui._KeyCode.KeyCode_Impl_.PRIOR = 1073741981;
-lime.ui._KeyCode.KeyCode_Impl_.RETURN2 = 1073741982;
-lime.ui._KeyCode.KeyCode_Impl_.SEPARATOR = 1073741983;
-lime.ui._KeyCode.KeyCode_Impl_.OUT = 1073741984;
-lime.ui._KeyCode.KeyCode_Impl_.OPER = 1073741985;
-lime.ui._KeyCode.KeyCode_Impl_.CLEAR_AGAIN = 1073741986;
-lime.ui._KeyCode.KeyCode_Impl_.CRSEL = 1073741987;
-lime.ui._KeyCode.KeyCode_Impl_.EXSEL = 1073741988;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_00 = 1073742000;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_000 = 1073742001;
-lime.ui._KeyCode.KeyCode_Impl_.THOUSAND_SEPARATOR = 1073742002;
-lime.ui._KeyCode.KeyCode_Impl_.DECIMAL_SEPARATOR = 1073742003;
-lime.ui._KeyCode.KeyCode_Impl_.CURRENCY_UNIT = 1073742004;
-lime.ui._KeyCode.KeyCode_Impl_.CURRENCY_SUBUNIT = 1073742005;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_LEFT_PARENTHESIS = 1073742006;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_RIGHT_PARENTHESIS = 1073742007;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_LEFT_BRACE = 1073742008;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_RIGHT_BRACE = 1073742009;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_TAB = 1073742010;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_BACKSPACE = 1073742011;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_A = 1073742012;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_B = 1073742013;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_C = 1073742014;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_D = 1073742015;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_E = 1073742016;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_F = 1073742017;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_XOR = 1073742018;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_POWER = 1073742019;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_PERCENT = 1073742020;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_LESS_THAN = 1073742021;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_GREATER_THAN = 1073742022;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_AMPERSAND = 1073742023;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_DOUBLE_AMPERSAND = 1073742024;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_VERTICAL_BAR = 1073742025;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_DOUBLE_VERTICAL_BAR = 1073742026;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_COLON = 1073742027;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_HASH = 1073742028;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_SPACE = 1073742029;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_AT = 1073742030;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_EXCLAMATION = 1073742031;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_STORE = 1073742032;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_RECALL = 1073742033;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_CLEAR = 1073742034;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_ADD = 1073742035;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_SUBTRACT = 1073742036;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_MULTIPLY = 1073742037;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_MEM_DIVIDE = 1073742038;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_PLUS_MINUS = 1073742039;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_CLEAR = 1073742040;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_CLEAR_ENTRY = 1073742041;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_BINARY = 1073742042;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_OCTAL = 1073742043;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_DECIMAL = 1073742044;
-lime.ui._KeyCode.KeyCode_Impl_.NUMPAD_HEXADECIMAL = 1073742045;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT_CTRL = 1073742048;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT_SHIFT = 1073742049;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT_ALT = 1073742050;
-lime.ui._KeyCode.KeyCode_Impl_.LEFT_META = 1073742051;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT_CTRL = 1073742052;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT_SHIFT = 1073742053;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT_ALT = 1073742054;
-lime.ui._KeyCode.KeyCode_Impl_.RIGHT_META = 1073742055;
-lime.ui._KeyCode.KeyCode_Impl_.MODE = 1073742081;
-lime.ui._KeyCode.KeyCode_Impl_.AUDIO_NEXT = 1073742082;
-lime.ui._KeyCode.KeyCode_Impl_.AUDIO_PREVIOUS = 1073742083;
-lime.ui._KeyCode.KeyCode_Impl_.AUDIO_STOP = 1073742084;
-lime.ui._KeyCode.KeyCode_Impl_.AUDIO_PLAY = 1073742085;
-lime.ui._KeyCode.KeyCode_Impl_.AUDIO_MUTE = 1073742086;
-lime.ui._KeyCode.KeyCode_Impl_.MEDIA_SELECT = 1073742087;
-lime.ui._KeyCode.KeyCode_Impl_.WWW = 1073742088;
-lime.ui._KeyCode.KeyCode_Impl_.MAIL = 1073742089;
-lime.ui._KeyCode.KeyCode_Impl_.CALCULATOR = 1073742090;
-lime.ui._KeyCode.KeyCode_Impl_.COMPUTER = 1073742091;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_SEARCH = 1073742092;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_HOME = 1073742093;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_BACK = 1073742094;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_FORWARD = 1073742095;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_STOP = 1073742096;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_REFRESH = 1073742097;
-lime.ui._KeyCode.KeyCode_Impl_.APP_CONTROL_BOOKMARKS = 1073742098;
-lime.ui._KeyCode.KeyCode_Impl_.BRIGHTNESS_DOWN = 1073742099;
-lime.ui._KeyCode.KeyCode_Impl_.BRIGHTNESS_UP = 1073742100;
-lime.ui._KeyCode.KeyCode_Impl_.DISPLAY_SWITCH = 1073742101;
-lime.ui._KeyCode.KeyCode_Impl_.BACKLIGHT_TOGGLE = 1073742102;
-lime.ui._KeyCode.KeyCode_Impl_.BACKLIGHT_DOWN = 1073742103;
-lime.ui._KeyCode.KeyCode_Impl_.BACKLIGHT_UP = 1073742104;
-lime.ui._KeyCode.KeyCode_Impl_.EJECT = 1073742105;
-lime.ui._KeyCode.KeyCode_Impl_.SLEEP = 1073742106;
 lime.ui.KeyEventManager.onKeyDown = new lime.app.Event();
 lime.ui.KeyEventManager.onKeyUp = new lime.app.Event();
-lime.ui._KeyEventManager.KeyEventType_Impl_.KEY_DOWN = 0;
-lime.ui._KeyEventManager.KeyEventType_Impl_.KEY_UP = 1;
 lime.ui.MouseEventManager.onMouseDown = new lime.app.Event();
 lime.ui.MouseEventManager.onMouseMove = new lime.app.Event();
 lime.ui.MouseEventManager.onMouseUp = new lime.app.Event();
 lime.ui.MouseEventManager.onMouseWheel = new lime.app.Event();
-lime.ui._MouseEventManager.MouseEventType_Impl_.MOUSE_DOWN = 0;
-lime.ui._MouseEventManager.MouseEventType_Impl_.MOUSE_UP = 1;
-lime.ui._MouseEventManager.MouseEventType_Impl_.MOUSE_MOVE = 2;
-lime.ui._MouseEventManager.MouseEventType_Impl_.MOUSE_WHEEL = 3;
 lime.ui.TouchEventManager.onTouchEnd = new lime.app.Event();
 lime.ui.TouchEventManager.onTouchMove = new lime.app.Event();
 lime.ui.TouchEventManager.onTouchStart = new lime.app.Event();
-lime.ui._TouchEventManager.TouchEventType_Impl_.TOUCH_START = 0;
-lime.ui._TouchEventManager.TouchEventType_Impl_.TOUCH_END = 1;
-lime.ui._TouchEventManager.TouchEventType_Impl_.TOUCH_MOVE = 2;
 lime.ui.Window.onWindowActivate = new lime.app.Event();
 lime.ui.Window.onWindowClose = new lime.app.Event();
 lime.ui.Window.onWindowDeactivate = new lime.app.Event();
@@ -9396,24 +8548,6 @@ lime.ui.Window.onWindowFocusOut = new lime.app.Event();
 lime.ui.Window.onWindowMove = new lime.app.Event();
 lime.ui.Window.onWindowResize = new lime.app.Event();
 lime.ui.Window.eventInfo = new lime.ui._Window.WindowEventInfo();
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_FULLSCREEN = 1;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_BORDERLESS = 2;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_RESIZABLE = 4;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_HARDWARE = 8;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_VSYNC = 16;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_HW_AA = 32;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_HW_AA_HIRES = 96;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_ALLOW_SHADERS = 128;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_REQUIRE_SHADERS = 256;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_DEPTH_BUFFER = 512;
-lime.ui._Window.WindowFlags_Impl_.WINDOW_FLAG_STENCIL_BUFFER = 1024;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_ACTIVATE = 0;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_CLOSE = 1;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_DEACTIVATE = 2;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_FOCUS_IN = 3;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_FOCUS_OUT = 4;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_MOVE = 5;
-lime.ui._Window.WindowEventType_Impl_.WINDOW_RESIZE = 6;
 lime.utils.ByteArray.lime_byte_array_overwrite_file = lime.system.System.load("lime","lime_byte_array_overwrite_file",2);
 lime.utils.ByteArray.lime_byte_array_read_file = lime.system.System.load("lime","lime_byte_array_read_file",1);
 lime.utils.ByteArray.lime_lzma_decode = lime.system.System.load("lime","lime_lzma_decode",1);
