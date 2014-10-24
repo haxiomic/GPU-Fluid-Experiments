@@ -21,7 +21,6 @@ class GPUParticles{
 	public var dragCoefficient(get, set):Float;
 	public var flowScaleX(get, set):Float;
 	public var flowScaleY(get, set):Float;
-	public var flowEnabled(get, set):Bool;
 	public var flowVelocityField(get, set):GLTexture;
 
 	public var count(default, null):Int;
@@ -49,7 +48,6 @@ class GPUParticles{
 		this.dragCoefficient = 1;
 		this.flowScaleX = 1;
 		this.flowScaleY = 1;
-		this.flowEnabled = false;
 
 		//trigger creation of particle textures
 		setCount(count);
@@ -118,16 +116,12 @@ class GPUParticles{
 	inline function get_dragCoefficient()   return stepParticlesShader.dragCoefficient.data;
 	inline function get_flowScaleX()         return stepParticlesShader.flowScale.data.x;
 	inline function get_flowScaleY()         return stepParticlesShader.flowScale.data.y;
-	inline function get_flowEnabled()       return stepParticlesShader.flowEnabled.data;
 	inline function get_flowVelocityField() return stepParticlesShader.flowVelocityField.data;
 
 	inline function set_dragCoefficient(v:Float)       return stepParticlesShader.dragCoefficient.data = v;
 	inline function set_flowScaleX(v:Float)             return stepParticlesShader.flowScale.data.x = v;
 	inline function set_flowScaleY(v:Float)             return stepParticlesShader.flowScale.data.y = v;
-	inline function set_flowEnabled(v:Bool)            return stepParticlesShader.flowEnabled.data = v;
 	inline function set_flowVelocityField(v:GLTexture){
-		if(v!=null)	this.flowEnabled = true;
-		else 		this.flowEnabled = false;
 		return stepParticlesShader.flowVelocityField.data = v;
 	}
 }
@@ -162,7 +156,6 @@ class InitialConditions extends PlaneTexture{}
 class ParticleBase extends PlaneTexture{}
 
 @:frag('
-	uniform bool flowEnabled;
 	uniform float dragCoefficient;
 	uniform vec2 flowScale;
 	uniform sampler2D flowVelocityField;
@@ -171,10 +164,8 @@ class ParticleBase extends PlaneTexture{}
 		vec2 p = texture2D(particleData, texelCoord).xy;
 		vec2 v = texture2D(particleData, texelCoord).zw;
 
-		if(flowEnabled){
-			vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;//(converts clip-space p to texel coordinates)
-			v += (vf - v) * dragCoefficient;
-		}
+		vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;//(converts clip-space p to texel coordinates)
+		v += (vf - v) * dragCoefficient;
 
 		p+=dt*v;
 		gl_FragColor = vec4(p, v);
