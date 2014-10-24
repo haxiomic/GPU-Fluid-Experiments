@@ -168,7 +168,7 @@ class Main extends Application {
 				//quality
 				gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
 					js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
-				}).name('Quality').listen();
+				}).name('Quality');//.listen();
 				//fluid iterations
 				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
 				//rest particles
@@ -199,7 +199,7 @@ class Main extends Application {
 				#end
 			default:
 				#if js
-					js.Lib.alert('WebGL is not supported :(');
+					js.Lib.alert('WebGL is not supported on this device :(');
 				#end
 				trace('RenderContext \'$context\' not supported');
 		}
