@@ -199,7 +199,7 @@ class Main extends Application {
 				#end
 			default:
 				#if js
-					js.Lib.alert('WebGL is not supported');
+					js.Lib.alert('WebGL is not supported :(');
 				#end
 				trace('RenderContext \'$context\' not supported');
 		}

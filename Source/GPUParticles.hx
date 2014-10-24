@@ -114,16 +114,14 @@ class GPUParticles{
 	}
 
 	inline function get_dragCoefficient()   return stepParticlesShader.dragCoefficient.data;
-	inline function get_flowScaleX()         return stepParticlesShader.flowScale.data.x;
-	inline function get_flowScaleY()         return stepParticlesShader.flowScale.data.y;
+	inline function get_flowScaleX()        return stepParticlesShader.flowScale.data.x;
+	inline function get_flowScaleY()        return stepParticlesShader.flowScale.data.y;
 	inline function get_flowVelocityField() return stepParticlesShader.flowVelocityField.data;
 
-	inline function set_dragCoefficient(v:Float)       return stepParticlesShader.dragCoefficient.data = v;
+	inline function set_dragCoefficient(v:Float)        return stepParticlesShader.dragCoefficient.data = v;
 	inline function set_flowScaleX(v:Float)             return stepParticlesShader.flowScale.data.x = v;
 	inline function set_flowScaleY(v:Float)             return stepParticlesShader.flowScale.data.y = v;
-	inline function set_flowVelocityField(v:GLTexture){
-		return stepParticlesShader.flowVelocityField.data = v;
-	}
+	inline function set_flowVelocityField(v:GLTexture)  return stepParticlesShader.flowVelocityField.data = v;
 }
 
 @:vert('
