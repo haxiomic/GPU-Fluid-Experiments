@@ -1431,10 +1431,35 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		this.mouseClipSpace.setTo(x / this.windows[0].width * 2 - 1,(this.windows[0].height - y) / this.windows[0].height * 2 - 1);
 		this.mousePointKnown = true;
 	}
+	,updateMouseCoord: function(x,y) {
+		this.mouse.setTo(x,y);
+		this.mouseClipSpace.setTo(x / this.windows[0].width * 2 - 1,(this.windows[0].height - y) / this.windows[0].height * 2 - 1);
+		this.mousePointKnown = true;
+	}
 	,updateLastMouse: function() {
 		this.lastMouse.setTo(this.mouse.x,this.mouse.y);
 		this.lastMouseClipSpace.setTo(this.mouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.mouse.y) / this.windows[0].height * 2 - 1);
 		this.lastMousePointKnown = this.mousePointKnown;
+	}
+	,onTouchStart: function(x,y,id) {
+		this.mouse.setTo(x,y);
+		this.mouseClipSpace.setTo(x / this.windows[0].width * 2 - 1,(this.windows[0].height - y) / this.windows[0].height * 2 - 1);
+		this.mousePointKnown = true;
+		this.lastMouse.setTo(this.mouse.x,this.mouse.y);
+		this.lastMouseClipSpace.setTo(this.mouse.x / this.windows[0].width * 2 - 1,(this.windows[0].height - this.mouse.y) / this.windows[0].height * 2 - 1);
+		this.lastMousePointKnown = this.mousePointKnown;
+		this.isMouseDown = true;
+	}
+	,onTouchEnd: function(x,y,id) {
+		this.mouse.setTo(x,y);
+		this.mouseClipSpace.setTo(x / this.windows[0].width * 2 - 1,(this.windows[0].height - y) / this.windows[0].height * 2 - 1);
+		this.mousePointKnown = true;
+		this.isMouseDown = false;
+	}
+	,onTouchMove: function(x,y,id) {
+		this.mouse.setTo(x,y);
+		this.mouseClipSpace.setTo(x / this.windows[0].width * 2 - 1,(this.windows[0].height - y) / this.windows[0].height * 2 - 1);
+		this.mousePointKnown = true;
 	}
 	,onKeyUp: function(keyCode,modifier) {
 		switch(keyCode) {
