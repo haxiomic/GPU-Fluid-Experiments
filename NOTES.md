@@ -7,7 +7,10 @@ NOTES:
 	- Texture lookups outside function void main() are not standard - this caused issues on many GPUs!
 
 TODO:
-	- gh-pages README.md & index.html introduction
+	- need fallback for interpolation when OES_texture_float_linear is not supported (simply bilerp in relevant shaders controlled by glsl define)
+		(this is an issue on iOS webgl)
+		> http://codeflow.org/entries/2013/feb/22/how-to-write-portable-webgl/#how-to-deal-with-no-linear-filtering-support
+
 	- Shaderblox: Precision
 				  Defines
 				  Super functions
@@ -21,7 +24,6 @@ TODO:
 		what on earth?
 		-> seems to get worse when particles are on top of one another ?
 			=> depth testing?
-	- need fallback for interpolation when OES_texture_float_linear is not supported (simply bilerp in relevant shaders controlled by glsl define)
 	- fallback to power of two textures in fluid for speed / compatibility in gltoolbox
 	- fluid shouldn't really manage the dye, nor should particles manage advection
 
@@ -31,6 +33,6 @@ TODO:
 
 BUGS in Other Things:
 	- Chrome, if missing OES_texture_float_linear, chrome errors incorrectly 'missing OES_float_linear'
-	- Haxe Map.set should return the item set? (ie for chaining)
+	- Haxe Map.set should return the item set? (for chaining)
 	- haxe.Timer.delay not working on c++?
-	- Type.createInstance - why is there an argument limit??? There's no reason for there to be one.
+	- Type.createInstance - why is there an argument limit? There's no reason for there to be one.
