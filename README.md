@@ -48,4 +48,4 @@ Desktop yes, mobile not yet. The lime library isn't quite finished, so it's not 
 ```aether test mac``` or ```aether test windows``` or ```aether test linux```. I've only tested the mac c++ build.
 
 ####Why haxe?
-I'd recommend reading this article on the topic [io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript](http://io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript). In this project, haxe is used to make create a tight binding between the glsl and the host. This makes setting a glsl uniform straightforward, something like ```shader.coordinate.x = 0.5;``` instead of juggling uniform locations and whatnot.
+I'd recommend reading this article on the topic [io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript](http://io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript). In this project, haxe is used to create a tight binding between the glsl and the host. This makes setting a glsl uniform straightforward, something like ```shader.coordinate.x = 0.5;``` instead of juggling uniform locations and whatnot.
