@@ -43,9 +43,9 @@ A browser should open with the result (*test* is aether's build and run command.
 
 ---------------
 
-####Can I build for C++ and mobile targets?
-C++ Yes, mobile not yet. The lime library isn't quite finished, so it's not a super smooth process, follow the instructions on [lime's git page](https://github.com/openfl/lime/) to build lime's native binaries and then run
+####Can I build for Desktop and mobile targets?
+Desktop yes, mobile not yet. The lime library isn't quite finished, so it's not a super smooth process, follow the instructions on [lime's git page](https://github.com/openfl/lime/) to build lime's native binaries and then run
 ```aether test mac``` or ```aether test windows``` or ```aether test linux```. I've only tested the mac c++ build.
 
 ####Why haxe?
-I'd recommend reading this article on the topic [io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript](http://io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript), in this project, haxe is used to make create a tight binding between the glsl and the host. This makes setting a glsl uniform straightforward, something like ```shader.coordinate.x = 0.5;``` instead of juggling uniform locations and whatnot.
+I'd recommend reading this article on the topic [io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript](http://io.pellucid.com/blog/the-benefits-of-transpiling-to-javascript). In this project, haxe is used to make create a tight binding between the glsl and the host. This makes setting a glsl uniform straightforward, something like ```shader.coordinate.x = 0.5;``` instead of juggling uniform locations and whatnot.
