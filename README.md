@@ -17,7 +17,7 @@ Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid 
 - [Haxe 3.1.3](http://haxe.org/)
 
 ####Building
-First install the build tool **aether** from haxelib\*
+First install the build tool **aether** from haxelib \*
 
 ```haxelib install aether```
 
@@ -39,7 +39,7 @@ aether test html5
 ```
 A browser should open with the result (*test* is aether's build and run command.)
 
-\**haxe just produces the javascript but aether handles the html template as well as the iOS and android project files when targeting mobile. Currently, lime is undergoing an overhaul so mobile targets are not working.*
+\* *haxe just produces the javascript but aether handles the html template as well as the iOS and android project files when targeting mobile. Currently, lime is undergoing an overhaul so mobile targets are not working.*
 
 ---------------
 
