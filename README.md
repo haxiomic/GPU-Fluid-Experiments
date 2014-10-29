@@ -33,7 +33,7 @@ haxelib install lime
 haxelib git gltoolbox https://github.com/haxiomic/GLToolbox.git
 haxelib git shaderblox https://github.com/haxiomic/shaderblox.git
 ```
-Now you should be go to go, cd into the gpu fluid directory and run
+Now you should be good to go, cd into the gpu fluid directory and run
 ```
 aether test html5
 ```
