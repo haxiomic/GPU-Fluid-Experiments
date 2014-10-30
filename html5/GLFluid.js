@@ -2132,6 +2132,16 @@ js.Boot.__trace = function(v,i) {
 	var d;
 	if(typeof(document) != "undefined" && (d = document.getElementById("haxe:trace")) != null) d.innerHTML += js.Boot.__unhtml(msg) + "<br/>"; else if(typeof console != "undefined" && console.log != null) console.log(msg);
 };
+js.Boot.__clear_trace = function() {
+	var d = document.getElementById("haxe:trace");
+	if(d != null) d.innerHTML = "";
+};
+js.Boot.isClass = function(o) {
+	return o.__name__;
+};
+js.Boot.isEnum = function(e) {
+	return e.__ename__;
+};
 js.Boot.getClass = function(o) {
 	if((o instanceof Array) && o.__enum__ == null) return Array; else {
 		var cl = o.__class__;
@@ -2179,7 +2189,7 @@ js.Boot.__string_rec = function(o,s) {
 		} catch( e ) {
 			return "???";
 		}
-		if(tostr != null && tostr != Object.toString) {
+		if(tostr != null && tostr != Object.toString && typeof(tostr) == "function") {
 			var s2 = o.toString();
 			if(s2 != "[object Object]") return s2;
 		}
@@ -7563,6 +7573,24 @@ lime.ui.Window.prototype = {
 						this.div.style.width = this.element.clientWidth + "px";
 						this.div.style.height = this.element.clientHeight + "px";
 					}
+				}
+			} else {
+				var scaleX = this.element.clientWidth / this.setWidth;
+				var scaleY = this.element.clientHeight / this.setHeight;
+				var currentRatio = scaleX / scaleY;
+				var targetRatio = Math.min(scaleX,scaleY);
+				if(this.canvas != null) {
+					if(this.element != this.canvas) {
+						this.canvas.style.width = this.setWidth * targetRatio + "px";
+						this.canvas.style.height = this.setHeight * targetRatio + "px";
+						this.canvas.style.marginLeft = (this.element.clientWidth - this.setWidth * targetRatio) / 2 + "px";
+						this.canvas.style.marginTop = (this.element.clientHeight - this.setHeight * targetRatio) / 2 + "px";
+					}
+				} else {
+					this.div.style.width = this.setWidth * targetRatio + "px";
+					this.div.style.height = this.setHeight * targetRatio + "px";
+					this.div.style.marginLeft = (this.element.clientWidth - this.setWidth * targetRatio) / 2 + "px";
+					this.div.style.marginTop = (this.element.clientHeight - this.setHeight * targetRatio) / 2 + "px";
 				}
 			}
 		}
