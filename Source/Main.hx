@@ -54,6 +54,7 @@ class Main extends Application {
 	var particleCount:Int;
 	var fluidScale:Float;
 	var fluidIterations(default, set):Int;
+	var viscParameter(default, set):Float;
 	var offScreenScale:Float;
 	var simulationQuality(default, set):SimulationQuality;
 
@@ -171,6 +172,9 @@ class Main extends Application {
 				}).name('Quality');//.listen();
 				//fluid iterations
 				gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
+				//visc param
+				this.viscParameter = 1 ;
+				gui.add(this, 'viscParameter', { None:0.01, Air: 0.2, Water: 1.0 , Oil: 100, Syrup: 1000 } ).name('Viscosity').onChange(function(v) viscParameter = v);
 				//rest particles
 				gui.add({f:particles.reset}, 'f').name('Reset Particles');
 				//stop fluid
@@ -327,6 +331,12 @@ class Main extends Application {
 	function set_fluidIterations(v:Int):Int{
 		fluidIterations = v;
 		if(fluid != null) fluid.solverIterations = v;
+		return v;
+	}
+	
+	function set_viscParameter(v:Int):Int{
+		viscParameter = v;
+		if(fluid != null) fluid.viscosity = v;
 		return v;
 	}
 
