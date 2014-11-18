@@ -196,6 +196,11 @@ class Main extends Application {
 				twitterIconEl.className = 'icon-twitter';
 				twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + 'px';
 				twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
+				//mobile app
+				var mobileGUI = gui.add({f:function(){
+					js.Browser.window.open('mobile-app/index.html', '_blank');
+				}}, 'f').name('Mobile App');
+				mobileGUI.__li.className = 'cr link footer';//remove any other classes
 				#end
 			default:
 				#if js
