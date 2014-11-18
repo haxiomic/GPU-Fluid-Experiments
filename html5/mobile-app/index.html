@@ -10,99 +10,127 @@
 
     <link rel="stylesheet" type="text/css" href="devices.min.css">
 	<style type="text/css">
-	*{
-		box-sizing: border-box;
-	}
-	body{
-		padding:0;
-		margin:0;
-		
-		font-family: 'Source Sans Pro', sans-serif;
-		color: #416884;
-		color: white;
-
-		background-image: url('blurred-background.png');
-		/*background-position: center center;*/
-		background-size: auto;
-		background-repeat: none;
-	}
-	h1, h2{
-		font-weight: normal;
-	}
-	.header{
-		text-align: center;
-		text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.35);
-	}
-	.content{
-		max-width: 1024px;
-		margin: auto;
-	}
-	.email-form{
-		margin-top: 40px;
-		/*background: white;*/
-		padding: 20px;
-		text-align: center;
-		border-radius: 4px;
-	}
-	.email-form input{
-		display: inline-block;
-		height: 50px;
-		border: none;
-        outline: none;
-		padding: 10px;
-		font-size: 20px;
-		border-radius: 4px;
-		border: 2px solid #E1E9EF;
-		margin-bottom: 10px;
-	}
-	.email-form button{
-		display: inline-block;
-		height: 50px;
-		padding: 10px 15px;
-		cursor: pointer;
-		color: #fff;
-		text-decoration: none;
-		/*font-weight: bold;*/
-
-		font-size: 17px;
-		border-radius: 4px;
-		text-align: center;
-
-		/*background-color: #569ED2;*/
-		/*border: 2px solid #65B0E7;*/
-		border: 2px solid white;
-        background: rgba(255, 255, 255, 0.2);
-	}
-	hr{
-		border:1px solid rgba(255, 255, 255, 0.1);
-		border-width: 1px;
+	* {
+	  box-sizing: border-box;
 	}
 
-	.marvel-device{
-		box-sizing: content-box !important;
-	}
-	.marvel-device .screen{
-		background-image: url('fluid-preview.png');
-		background-position: center center;
-		background-size: cover;
+	body {
+	  padding: 0;
+	  margin: 0;
+	  font-family: 'Source Sans Pro', sans-serif;
+	  color: #416884;
+	  color: white;
+	  background-color: #170722;
+	  background-image: url('blurred-background.png');
+			/*background-position: center center;*/
+	  background-size: auto;
+	  background-repeat: none;
 	}
 
-	.main{
-		margin: 40px auto;
-		padding: 30px 30px;
+	h1, h2 {
+	  font-weight: normal;
 	}
 
-	.main .left{
-		width: 400px;
-		float: left;
+	.header {
+	  text-align: center;
+	  text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.35);
 	}
-	.main .right{
-		overflow: hidden;
-		min-width: 300px;
+
+	.content {
+	  max-width: 1024px;
+	  margin: auto;
 	}
-	.background-overlay{
-		background-color: rgba(255,255,255,0.1);
-		/*background-color: rgba(0,0,0,0.5);*/
+
+	.main {
+	  margin: 40px auto;
+	  padding: 30px 30px;
+	}
+
+	.main .left {
+	  width: 400px;
+	  float: left;
+	}
+
+	.main .right {
+	  overflow: hidden;
+	  min-width: 300px;
+	}
+
+	.background-overlay {
+	  background-color: rgba(255,255,255,0.1);
+			/*background-color: rgba(0,0,0,0.5);*/;
+	}
+
+	.email-form {
+	  margin-top: 40px;
+			/*background: white;*/
+	  padding: 20px;
+	  text-align: center;
+	  border-radius: 4px;
+	}
+
+	.email-form input {
+	  display: inline-block;
+	  height: 50px;
+	  border: none;
+	  outline: none;
+	  padding: 10px;
+	  font-size: 20px;
+	  border-radius: 4px;
+	  border: 2px solid #E1E9EF;
+	  margin-bottom: 10px;
+	}
+
+	.email-form input.alert{
+	  border: 2px solid rgb(240, 149, 170);
+	  box-shadow: 0px 0px 5px red;
+      transition: border 0.3s, box-shadow 0.3s;
+      -webkit-transition: border 0.3s, box-shadow 0.3s;
+	}	
+
+	.email-form button {
+	  display: inline-block;
+	  height: 50px;
+	  padding: 10px 15px;
+	  cursor: pointer;
+	  color: #fff;
+	  text-decoration: none;
+			/*font-weight: bold;*/
+	  font-size: 17px;
+	  border-radius: 4px;
+	  text-align: center;
+			/*background-color: #569ED2;*/
+			/*border: 2px solid #65B0E7;*/
+	  border: 2px solid white;
+	  background: rgba(255, 255, 255, 0.2);
+	}
+
+	hr {
+	  border: 1px solid rgba(255, 255, 255, 0.1);
+	  border-width: 1px;
+	}
+
+	.marvel-device {
+	  box-sizing: content-box !important;
+	}
+
+	.marvel-device .screen {
+	  background-color: #170722;
+	  background-image: url('fluid-preview.jpg');
+	  background-position: center center;
+	  background-size: cover;
+	}
+
+	.pages-container{
+		position: relative;
+		min-height: 560px;
+	}
+
+	#signup, #signup-complete{
+		position: absolute;
+		top:0;
+		width: 100%;
+		left: 0;
 	}
 	</style>
 </head>
@@ -123,22 +151,68 @@
 				</div>
 			</div>
 			<div class="right">
-				<div class="header">
-					<h1>I'm building the iOS and Android apps at the moment - enter your email address and I'll email you when it's ready!</h1>
-					<hr>
-					<h2>Я делаю приложения, IOS и Android на данный момент - введите свой ​​адрес электронной почты , и я буду вам по электронной почте , когда он будет готов !</h2>
-				</div>
-				<div class="">
-					<div class="email-form">	
-						<form accept-charset="UTF-8" action="https://formkeep.com/f/83d0032d93ff" method="POST">
-							<input type="text" name="email" size="40" placeholder="email address">
-							<button type="submit">Submit</button>
-							<input type="hidden" name="utf8" value="✓">
-						</form>
+				<div class="pages-container">
+					<div id="signup">
+						<div class="header">
+							<h1>I'm building the iOS and Android app at the moment - enter your email address and I'll email you when it's ready!</h1>
+							<hr>
+							<h2>Я строю приложение IOS и Android на данный момент - введите свой ​​адрес электронной почты , и я буду вам по электронной почте , когда он будет готов !</h2>
+						</div>
+						<div class="email-form">	
+							<form accept-charset="UTF-8" action="https://formkeep.com/f/83d0032d93ff" method="POST">
+								<input type="text" name="email" size="40" placeholder="email address">
+								<button type="submit">Submit</button>
+								<input type="hidden" name="utf8" value="✓">
+							</form>
+						</div>
+					</div>
+					<div id="signup-complete" style="display:none">
+						<div class="header">
+							<h1>Great! I'll be in touch</h1>
+							<hr>
+							<h1>Отлично! Я буду в контакте</h1>
+						</div>
 					</div>
 				</div>
 			</div>
 		</div>
 	</div>
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script type="text/javascript">
+		var submitted = false;
+		$('form').on('submit', function(e){
+		   e.preventDefault();//don't redirect
+		   if(submitted)return;
+		   var $this = $(this);
+           var $emailField = $this.find('input[name=email]');
+           var $submitButton = $this.find('button[type=submit]');
+
+		   if(!$emailField.val()){
+		       $emailField.toggleClass('alert', true);
+		       return;
+		   }
+
+		   var data = {
+		       'email': $emailField.val()
+		   };
+
+		   $.ajax({
+		       url: $this.attr('action'),
+		       type: 'POST',
+		       data: data,
+		       beforeSend: function(){
+		           $submitButton.attr('disabled', 'disabled');  
+		       }
+		   }).done(function(data) {
+		       $submitButton.attr('disabled', false);
+		   });
+
+		   $('#signup').fadeOut();
+		   $('#signup-complete').fadeIn();
+
+		   submitted = true;
+		});
+	</script>
 </body>
 </html>
