@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+	<title>Fluid Dynamics App</title>
+
+    <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:200,300,400,600,700,300italic,400italic|Source+Serif+Pro:400,600,700' rel='stylesheet' type='text/css'>
+
+    <link rel="stylesheet" type="text/css" href="devices.min.css">
+	<style type="text/css">
+	*{
+		box-sizing: border-box;
+	}
+	body{
+		padding:0;
+		margin:0;
+		
+		font-family: 'Source Sans Pro', sans-serif;
+		color: #416884;
+		color: white;
+
+		background-image: url('blurred-background.png');
+		/*background-position: center center;*/
+		background-size: auto;
+		background-repeat: none;
+	}
+	h1, h2{
+		font-weight: normal;
+	}
+	.header{
+		text-align: center;
+		text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.35);
+	}
+	.content{
+		max-width: 1024px;
+		margin: auto;
+	}
+	.email-form{
+		margin-top: 40px;
+		/*background: white;*/
+		padding: 20px;
+		text-align: center;
+		border-radius: 4px;
+	}
+	.email-form input{
+		display: inline-block;
+		height: 50px;
+		border: none;
+        outline: none;
+		padding: 10px;
+		font-size: 20px;
+		border-radius: 4px;
+		border: 2px solid #E1E9EF;
+		margin-bottom: 10px;
+	}
+	.email-form button{
+		display: inline-block;
+		height: 50px;
+		padding: 10px 15px;
+		cursor: pointer;
+		color: #fff;
+		text-decoration: none;
+		/*font-weight: bold;*/
+
+		font-size: 17px;
+		border-radius: 4px;
+		text-align: center;
+
+		/*background-color: #569ED2;*/
+		/*border: 2px solid #65B0E7;*/
+		border: 2px solid white;
+        background: rgba(255, 255, 255, 0.2);
+	}
+	hr{
+		border:1px solid rgba(255, 255, 255, 0.1);
+		border-width: 1px;
+	}
+
+	.marvel-device{
+		box-sizing: content-box !important;
+	}
+	.marvel-device .screen{
+		background-image: url('fluid-preview.png');
+		background-position: center center;
+		background-size: cover;
+	}
+
+	.main{
+		margin: 40px auto;
+		padding: 30px 30px;
+	}
+
+	.main .left{
+		width: 400px;
+		float: left;
+	}
+	.main .right{
+		overflow: hidden;
+		min-width: 300px;
+	}
+	.background-overlay{
+		background-color: rgba(255,255,255,0.1);
+		/*background-color: rgba(0,0,0,0.5);*/
+	}
+	</style>
+</head>
+<body>
+	<div class="background-overlay">
+		<div class="content main">
+			<div class="left">
+				<div class="marvel-device s5 white">
+				    <div class="top-bar"></div>
+				    <div class="sleep"></div>
+				    <div class="camera"></div>
+				    <div class="sensor"></div>
+				    <div class="speaker"></div>
+				    <div class="screen">
+				        <!-- Content goes here -->
+				    </div>
+				    <div class="home"></div>
+				</div>
+			</div>
+			<div class="right">
+				<div class="header">
+					<h1>I'm building the iOS and Android apps at the moment - enter your email address and I'll email you when it's ready!</h1>
+					<hr>
+					<h2>Я делаю приложения, IOS и Android на данный момент - введите свой ​​адрес электронной почты , и я буду вам по электронной почте , когда он будет готов !</h2>
+				</div>
+				<div class="">
+					<div class="email-form">	
+						<form accept-charset="UTF-8" action="https://formkeep.com/f/83d0032d93ff" method="POST">
+							<input type="text" name="email" size="40" placeholder="email address">
+							<button type="submit">Submit</button>
+							<input type="hidden" name="utf8" value="✓">
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

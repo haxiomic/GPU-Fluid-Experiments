@@ -1267,10 +1267,14 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			twitterIconEl.className = "icon-twitter";
 			twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + "px";
 			twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
+			var mobileGUI = gui.add({ f : function() {
+				window.open("mobile-app/index.html","_blank");
+			}},"f").name("Mobile App");
+			mobileGUI.__li.className = "cr link footer";
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported on this device :(");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 204, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 209, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1393,7 +1397,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 347, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 352, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1406,7 +1410,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 367, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 372, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -4115,6 +4119,39 @@ lime.graphics.FlashRenderContext.prototype = {
 	}
 	,__class__: lime.graphics.FlashRenderContext
 };
+lime.graphics.Font = function(fontName) {
+	this.fontName = fontName;
+	this.glyphs = new haxe.ds.IntMap();
+};
+$hxClasses["lime.graphics.Font"] = lime.graphics.Font;
+lime.graphics.Font.__name__ = true;
+lime.graphics.Font.fromBytes = function(bytes) {
+	var font = new lime.graphics.Font();
+	return font;
+};
+lime.graphics.Font.fromFile = function(path) {
+	var font = new lime.graphics.Font();
+	font.__fromFile(path);
+	return font;
+};
+lime.graphics.Font.prototype = {
+	createImage: function() {
+		this.glyphs = new haxe.ds.IntMap();
+		return null;
+	}
+	,decompose: function() {
+		return null;
+	}
+	,loadRange: function(size,start,end) {
+	}
+	,loadGlyphs: function(size,glyphs) {
+		if(glyphs == null) glyphs = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^`'\"/\\&*()[]{}<>|:;_-+=?,. ";
+	}
+	,__fromFile: function(path) {
+		this.__fontPath = path;
+	}
+	,__class__: lime.graphics.Font
+};
 lime.graphics.GlyphRect = function(x,y,width,height,xOffset,yOffset) {
 	if(yOffset == null) yOffset = 0;
 	if(xOffset == null) xOffset = 0;
@@ -4129,27 +4166,6 @@ $hxClasses["lime.graphics.GlyphRect"] = lime.graphics.GlyphRect;
 lime.graphics.GlyphRect.__name__ = true;
 lime.graphics.GlyphRect.prototype = {
 	__class__: lime.graphics.GlyphRect
-};
-lime.graphics.Font = function(fontFace) {
-	this.fontFace = fontFace;
-	this.glyphs = new haxe.ds.IntMap();
-};
-$hxClasses["lime.graphics.Font"] = lime.graphics.Font;
-lime.graphics.Font.__name__ = true;
-lime.graphics.Font.prototype = {
-	createImage: function() {
-		this.glyphs = new haxe.ds.IntMap();
-		return null;
-	}
-	,decompose: function() {
-		return null;
-	}
-	,loadRange: function(size,start,end) {
-	}
-	,loadGlyphs: function(size,glyphs) {
-		if(glyphs == null) glyphs = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^`'\"/\\&*()[]{}<>|:;_-+=?,. ";
-	}
-	,__class__: lime.graphics.Font
 };
 lime.graphics.Image = function(buffer,offsetX,offsetY,width,height,color,type) {
 	if(height == null) height = 0;
