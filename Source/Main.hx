@@ -201,6 +201,11 @@ class Main extends Application {
 					js.Browser.window.open('mobile-app/index.html', '_blank');
 				}}, 'f').name('Mobile App');
 				mobileGUI.__li.className = 'cr link footer';//remove any other classes
+				//	add mobile icon
+				var mobileIconEl = js.Browser.document.createElement('span');
+				mobileIconEl.className = 'icon-mobile-phone';
+				mobileIconEl.style.lineHeight = mobileGUI.__li.clientHeight + 'px';
+				mobileGUI.domElement.parentElement.appendChild(mobileIconEl);
 				#end
 			default:
 				#if js
