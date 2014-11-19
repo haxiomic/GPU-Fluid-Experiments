@@ -91,6 +91,16 @@ class Main extends Application {
 	}
 
 	override function init (context:RenderContext):Void {
+		//iOS browsers are not supported
+		#if js
+			var isIOSBrowser:Bool = (~/(iPad|iPhone|iPod)/g).match(js.Browser.navigator.userAgent);
+			if(isIOSBrowser){
+				js.Lib.alert('iOS is not supported yet :(');
+				js.Browser.window.location.href = "mobile-app/index.html";
+				return;
+			}
+		#end
+
 		switch (context) {
 			case OPENGL (gl):
 				this.gl = gl;
