@@ -188,6 +188,21 @@ DefaultAssetLibrary.prototype = $extend(lime.AssetLibrary.prototype,{
 	}
 	,__class__: DefaultAssetLibrary
 });
+var EReg = function(r,opt) {
+	opt = opt.split("u").join("");
+	this.r = new RegExp(r,opt);
+};
+$hxClasses["EReg"] = EReg;
+EReg.__name__ = true;
+EReg.prototype = {
+	match: function(s) {
+		if(this.r.global) this.r.lastIndex = 0;
+		this.r.m = this.r.exec(s);
+		this.r.s = s;
+		return this.r.m != null;
+	}
+	,__class__: EReg
+};
 var GPUFluid = function(gl,width,height,cellSize,solverIterations) {
 	if(solverIterations == null) solverIterations = 18;
 	if(cellSize == null) cellSize = 8;
@@ -1205,6 +1220,12 @@ Main.__super__ = lime.app.Application;
 Main.prototype = $extend(lime.app.Application.prototype,{
 	init: function(context) {
 		var _g = this;
+		var isIOSBrowser = new EReg("(iPad|iPhone|iPod)","g").match(window.navigator.userAgent);
+		if(isIOSBrowser) {
+			js.Lib.alert("iOS is not supported yet :(");
+			window.location.href = "mobile-app/index.html";
+			return;
+		}
 		switch(context[1]) {
 		case 0:
 			var gl = context[2];
@@ -1278,7 +1299,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 			break;
 		default:
 			js.Lib.alert("WebGL is not supported on this device :(");
-			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 214, className : "Main", methodName : "init"});
+			haxe.Log.trace("RenderContext '" + Std.string(context) + "' not supported",{ fileName : "Main.hx", lineNumber : 224, className : "Main", methodName : "init"});
 		}
 		this.lastTime = haxe.Timer.stamp();
 	}
@@ -1401,7 +1422,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex += 1; else qualityIndex += 2;
 		if(qualityIndex > maxIndex) qualityIndex = maxIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 357, className : "Main", methodName : "lowerQualityRequired"});
+		haxe.Log.trace("Average FPS: " + this.performanceMonitor.fpsSample.average + ", lowering quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 367, className : "Main", methodName : "lowerQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
@@ -1414,7 +1435,7 @@ Main.prototype = $extend(lime.app.Application.prototype,{
 		if(magnitude < 0.5) qualityIndex -= 1; else qualityIndex -= 2;
 		if(qualityIndex < minIndex) qualityIndex = minIndex;
 		var newQuality = Type.createEnumIndex(SimulationQuality,qualityIndex);
-		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 377, className : "Main", methodName : "higherQualityRequired"});
+		haxe.Log.trace("Raising quality to: " + Std.string(newQuality),{ fileName : "Main.hx", lineNumber : 387, className : "Main", methodName : "higherQualityRequired"});
 		this.set_simulationQuality(newQuality);
 		this.updateSimulationTextures();
 	}
