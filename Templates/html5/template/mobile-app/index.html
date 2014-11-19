@@ -149,9 +149,11 @@
 	<div class="background-overlay">
 		<div class="content main">
 			<div class="left">
-				<div class="marvel-device s5 white">
+				<!-- device graphic thanks to https://github.com/marvelapp/devices.css -->
+				<div class="marvel-device iphone5s silver">
 				    <div class="top-bar"></div>
 				    <div class="sleep"></div>
+				    <div class="volume"></div>
 				    <div class="camera"></div>
 				    <div class="sensor"></div>
 				    <div class="speaker"></div>
@@ -159,6 +161,7 @@
 				        <!-- Content goes here -->
 				    </div>
 				    <div class="home"></div>
+				    <div class="bottom-bar"></div>
 				</div>
 			</div>
 			<div class="right">
@@ -189,7 +192,7 @@
 		</div>
 	</div>
 
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
 	<script type="text/javascript">
 		var submitted = false;
 		$('form').on('submit', function(e){
