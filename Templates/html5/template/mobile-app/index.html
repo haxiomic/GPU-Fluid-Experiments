@@ -123,7 +123,7 @@
 
 	.pages-container{
 		position: relative;
-		min-height: 560px;
+		min-height: 400px;
 	}
 
 	#signup, #signup-complete{
@@ -168,9 +168,9 @@
 				<div class="pages-container">
 					<div id="signup">
 						<div class="header">
-							<h1>I'm building the iOS and Android app at the moment - enter your email address and I'll email you when it's ready!</h1>
+							<h1 id="im-building">I'm building the iOS and Android app at the moment - enter your email address and I'll let you know when it's ready!</h1>
 							<hr>
-							<h3>Я строю приложение IOS и Android на данный момент - введите свой ​​адрес электронной почты, и я буду вам по электронной почте, когда он будет готов!</h3>
+							<h3>I hate spam too so I'll only send you a single email when it's ready</h3>
 						</div>
 						<div class="email-form">	
 							<form accept-charset="UTF-8" action="https://formkeep.com/f/83d0032d93ff" method="POST">
@@ -182,9 +182,7 @@
 					</div>
 					<div id="signup-complete" style="display:none">
 						<div class="header">
-							<h1>Great! I'll be in touch</h1>
-							<hr>
-							<h3>Отлично! Я буду в контакте</h3>
+							<h1 id="great-ill">Great! I'll be in touch</h1>
 						</div>
 					</div>
 				</div>
@@ -193,6 +191,7 @@
 	</div>
 
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <!-- email form -->
 	<script type="text/javascript">
 		var submitted = false;
 		$('form').on('submit', function(e){
@@ -202,7 +201,7 @@
            var $emailField = $this.find('input[name=email]');
            var $submitButton = $this.find('button[type=submit]');
 
-		   if(!$emailField.val()){
+		   if(!$emailField.val().trim()){
 		       $emailField.toggleClass('alert', true);
 		       return;
 		   }
@@ -223,10 +222,39 @@
 		   });
 
 		   $('#signup').fadeOut();
-		   $('#signup-complete').fadeIn();
+		   $('#signup-complete').fadeIn(function(){
+			   PageContainer.updateHeight(true);
+		   });
 
 		   submitted = true;
 		});
 	</script>
+    <!-- track pages-container content height -->
+    <script type="text/javascript">
+		var PageContainer = (function(){
+	    	$pagesContainer = $('.pages-container');
+
+	    	function updateHeight(animate){
+	    		var totalHeight = 0;
+	    		var children = $pagesContainer.children();
+	    		for (var i = 0; i < children.length; i++) {
+	    			var c = $(children[i]);
+	    			if(!c.is(":visible")) continue;
+	    			totalHeight += c.position().top+c.outerHeight(true);
+	    		};
+
+	    		if(animate)
+	    			$pagesContainer.stop(true, false).animate({'min-height':totalHeight}, 300);
+	    		else
+					$pagesContainer.css('min-height', totalHeight);
+		    }
+
+		    updateHeight(false);
+		    $( window ).resize(function(){updateHeight(false);});
+		    return {
+		    	updateHeight: updateHeight
+		    }
+	    })();
+    </script>
 </body>
 </html>
