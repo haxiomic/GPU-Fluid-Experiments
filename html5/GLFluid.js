@@ -4404,7 +4404,8 @@ lime.graphics.Image.prototype = {
 		default:
 		}
 	}
-	,encode: function(format) {
+	,encode: function(format,quality) {
+		if(quality == null) quality = 90;
 		if(format == null) format = "png";
 		return null;
 	}
@@ -4587,7 +4588,7 @@ lime.graphics.Image.prototype = {
 	}
 	,__fromBase64: function(base64,type,onload) {
 		var _g = this;
-		var image = window.document.createElement("img");
+		var image = new Image();
 		var image_onLoaded = function(event) {
 			_g.buffer = new lime.graphics.ImageBuffer(null,image.width,image.height);
 			_g.buffer.__srcImage = image;
@@ -4607,10 +4608,12 @@ lime.graphics.Image.prototype = {
 	}
 	,__fromFile: function(path,onload,onerror) {
 		var _g = this;
-		var image = window.document.createElement("img");
+		var image = new Image();
 		image.onload = function(_) {
 			_g.buffer = new lime.graphics.ImageBuffer(null,image.width,image.height);
 			_g.buffer.__srcImage = image;
+			_g.width = image.width;
+			_g.height = image.height;
 			if(onload != null) onload(_g);
 		};
 		image.onerror = function(_1) {
@@ -5541,24 +5544,37 @@ lime.graphics.utils.ImageDataUtil.fillRect = function(image,rect,color) {
 	var r = (color & 16711680) >>> 16;
 	var g = (color & 65280) >>> 8;
 	var b = color & 255;
+	var rgba = r | g << 8 | b << 16 | a << 24;
 	var data = image.buffer.data;
-	var stride = image.buffer.width * 4;
-	var offset;
-	var rowStart = rect.y + image.offsetY | 0;
-	var rowEnd = Std["int"](rect.get_bottom() + image.offsetY);
-	var columnStart = rect.x + image.offsetX | 0;
-	var columnEnd = Std["int"](rect.get_right() + image.offsetX);
-	var _g = rowStart;
-	while(_g < rowEnd) {
-		var row = _g++;
-		var _g1 = columnStart;
-		while(_g1 < columnEnd) {
-			var column = _g1++;
-			offset = row * stride + column * 4;
-			data[offset] = r;
-			data[offset + 1] = g;
-			data[offset + 2] = b;
-			data[offset + 3] = a;
+	if(rect.width == image.buffer.width && rect.height == image.buffer.height && rect.x == 0 && rect.y == 0 && image.offsetX == 0 && image.offsetY == 0) {
+		var length = image.buffer.width * image.buffer.height;
+		var _g = 0;
+		while(_g < length) {
+			var i = _g++;
+			data[i] = r;
+			data[i + 1] = g;
+			data[i + 2] = b;
+			data[i + 3] = a;
+		}
+	} else {
+		var stride = image.buffer.width * 4;
+		var offset;
+		var rowStart = rect.y + image.offsetY | 0;
+		var rowEnd = Std["int"](rect.get_bottom() + image.offsetY);
+		var columnStart = rect.x + image.offsetX | 0;
+		var columnEnd = Std["int"](rect.get_right() + image.offsetX);
+		var _g1 = rowStart;
+		while(_g1 < rowEnd) {
+			var row = _g1++;
+			var _g11 = columnStart;
+			while(_g11 < columnEnd) {
+				var column = _g11++;
+				offset = row * stride + column * 4;
+				data[offset] = r;
+				data[offset + 1] = g;
+				data[offset + 2] = b;
+				data[offset + 3] = a;
+			}
 		}
 	}
 	image.dirty = true;
@@ -5613,7 +5629,7 @@ lime.graphics.utils.ImageDataUtil.getPixel = function(image,x,y) {
 	var offset = 4 * (y + image.offsetY) * image.buffer.width + (x + image.offsetX) * 4;
 	if(image.get_premultiplied()) {
 		var unmultiply = 255.0 / data[offset + 3];
-		haxe.Log.trace(unmultiply,{ fileName : "ImageDataUtil.hx", lineNumber : 334, className : "lime.graphics.utils.ImageDataUtil", methodName : "getPixel"});
+		haxe.Log.trace(unmultiply,{ fileName : "ImageDataUtil.hx", lineNumber : 361, className : "lime.graphics.utils.ImageDataUtil", methodName : "getPixel"});
 		return lime.graphics.utils.ImageDataUtil.__clamp[data[offset] * unmultiply | 0] << 16 | lime.graphics.utils.ImageDataUtil.__clamp[data[offset + 1] * unmultiply | 0] << 8 | lime.graphics.utils.ImageDataUtil.__clamp[data[offset + 2] * unmultiply | 0];
 	} else return data[offset] << 16 | data[offset + 1] << 8 | data[offset + 2];
 };
@@ -6961,6 +6977,8 @@ lime.system.System.embed = $hx_exports.lime.embed = function(elementName,width,h
 	if(height == null) height = 0;
 	ApplicationMain.config.background = color;
 	ApplicationMain.config.element = element;
+	ApplicationMain.config.width = width;
+	ApplicationMain.config.height = height;
 	ApplicationMain.create();
 };
 lime.system.System.findHaxeLib = function(library) {
@@ -7319,48 +7337,6 @@ lime.ui.TouchEventManager.handleEvent = function(event) {
 				lime.ui.TouchEventManager.onTouchMove.remove(listeners2[i2]);
 				length2--;
 			} else i2++;
-		}
-		break;
-	}
-	var _g2 = lime.ui.TouchEventManager.eventInfo.type;
-	switch(_g2) {
-	case 0:
-		var listeners3 = lime.ui.TouchEventManager.onTouchStart.listeners;
-		var repeat3 = lime.ui.TouchEventManager.onTouchStart.repeat;
-		var length3 = listeners3.length;
-		var i3 = 0;
-		while(i3 < length3) {
-			listeners3[i3](lime.ui.TouchEventManager.eventInfo.x,lime.ui.TouchEventManager.eventInfo.y,lime.ui.TouchEventManager.eventInfo.id);
-			if(!repeat3[i3]) {
-				lime.ui.TouchEventManager.onTouchStart.remove(listeners3[i3]);
-				length3--;
-			} else i3++;
-		}
-		break;
-	case 1:
-		var listeners4 = lime.ui.TouchEventManager.onTouchEnd.listeners;
-		var repeat4 = lime.ui.TouchEventManager.onTouchEnd.repeat;
-		var length4 = listeners4.length;
-		var i4 = 0;
-		while(i4 < length4) {
-			listeners4[i4](lime.ui.TouchEventManager.eventInfo.x,lime.ui.TouchEventManager.eventInfo.y,lime.ui.TouchEventManager.eventInfo.id);
-			if(!repeat4[i4]) {
-				lime.ui.TouchEventManager.onTouchEnd.remove(listeners4[i4]);
-				length4--;
-			} else i4++;
-		}
-		break;
-	case 2:
-		var listeners5 = lime.ui.TouchEventManager.onTouchMove.listeners;
-		var repeat5 = lime.ui.TouchEventManager.onTouchMove.repeat;
-		var length5 = listeners5.length;
-		var i5 = 0;
-		while(i5 < length5) {
-			listeners5[i5](lime.ui.TouchEventManager.eventInfo.x,lime.ui.TouchEventManager.eventInfo.y,lime.ui.TouchEventManager.eventInfo.id);
-			if(!repeat5[i5]) {
-				lime.ui.TouchEventManager.onTouchMove.remove(listeners5[i5]);
-				length5--;
-			} else i5++;
 		}
 		break;
 	}
@@ -7781,7 +7757,7 @@ lime.utils.ByteArray.prototype = {
 		return value;
 	}
 	,uncompress: function(algorithm) {
-		haxe.Log.trace("Warning: ByteArray.uncompress on JS target requires the 'format' haxelib",{ fileName : "ByteArray.hx", lineNumber : 615, className : "lime.utils.ByteArray", methodName : "uncompress"});
+		haxe.Log.trace("Warning: ByteArray.uncompress on JS target requires the 'format' haxelib",{ fileName : "ByteArray.hx", lineNumber : 650, className : "lime.utils.ByteArray", methodName : "uncompress"});
 	}
 	,write_uncheck: function($byte) {
 		__dollar__sset(b,this.position++,$byte & 255);
