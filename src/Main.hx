@@ -91,22 +91,28 @@ class Main extends App {
 	}
 
 	override function config( config:AppConfig ) : AppConfig {
-		config.window.borderless = true;
-		config.window.fullscreen = true;
+		#if !desktop
+			config.window.borderless = true;
+			config.window.fullscreen = true;
+		#end
 	    return config;
 	}
 
 	override function ready(){
 		this.window = app.window;
-        this.window.onrender = render;
 
-        //work around to make sure we only init after the window dimensions are set
+        //hacky work around to make sure we only init after the window dimensions are set
+        //#! bug: 
+        //	- window dimensions when fullscreen are not set at ready()
+        //	- window events are not firing correctly in mac (eg, created not firing)
         var windowInitialized = false;
         this.window.onevent = function(?e:WindowEvent){
+        	trace(e.type, WindowEventType.created);
         	switch (e.type) {
-        		case WindowEventType.size_changed:
+        		case WindowEventType.created, WindowEventType.size_changed, WindowEventType.shown:
         			if(!windowInitialized){
 						init();
+				        this.window.onrender = render;
 	        			windowInitialized = true;
         			}
         		default: null;
