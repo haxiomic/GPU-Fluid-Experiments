@@ -8,6 +8,7 @@ import snow.types.Types;
 import snow.utils.Float32Array;
 import snow.window.Window;
 import snow.App;
+import snow.types.Types;
 
 import gltoolbox.render.RenderTarget;
 import shaderblox.ShaderBase;
@@ -60,7 +61,7 @@ class Main extends App {
 
 		performanceMonitor = new PerformanceMonitor(35, null, 2000);
 
-		simulationQuality = Medium;
+		simulationQuality = High;
 
 		#if desktop
 		simulationQuality = UltraHigh;
@@ -98,7 +99,19 @@ class Main extends App {
 	override function ready(){
 		this.window = app.window;
         this.window.onrender = render;
-		init();
+
+        //work around to make sure we only init after the window dimensions are set
+        var windowInitialized = false;
+        this.window.onevent = function(?e:WindowEvent){
+        	switch (e.type) {
+        		case WindowEventType.size_changed:
+        			if(!windowInitialized){
+						init();
+	        			windowInitialized = true;
+        			}
+        		default: null;
+        	}
+        }
 	}
 
 	function init():Void {
