@@ -6,7 +6,7 @@
 	<app main="Main" path="Export" file="GLFluid" />
 
 	<window hardware="true" allow-shaders="true" require-shaders="true" depth-buffer="false" stencil-buffer="false" />
-	<window fullscreen="false" resizable="true" borderless="false" vsync="true" />
+	<window fullscreen="false" resizable="true" borderless="false" vsync="false" />
 	<window fps="120" unless="html5"/>
 	<window fps="0" if="html5"/>
 	<window antialiasing="4"/>
