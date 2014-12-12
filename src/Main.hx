@@ -91,6 +91,7 @@ class Main extends App {
 	}
 
 	override function config( config:AppConfig ) : AppConfig {
+		config.web.no_context_menu = false;
 		#if !desktop
 			config.window.borderless = true;
 			config.window.fullscreen = true;
