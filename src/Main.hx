@@ -87,6 +87,12 @@ class Main extends App {
 				}
 			}
 		}
+		//Extract iterations
+		if(urlParams.exists('iterations')){
+			var iterationsParam = Std.parseInt(urlParams.get('iterations'));
+			if(Std.is(iterationsParam, Int))
+				fluidIterations = iterationsParam;
+		}
 		#end
 	}
 
@@ -468,16 +474,33 @@ class Main extends App {
 		lastMousePointKnown = true && mousePointKnown;
 	}
 
+
+	var lshiftDown = false;
+	var rshiftDown = false;
+	override function onkeydown( keyCode : Int, _, _, _, _, _){
+		switch (keyCode) {
+			case Key.lshift: 
+				lshiftDown = true;
+			case Key.rshift: 
+				rshiftDown = true;
+		}
+	}
+	
 	override function onkeyup( keyCode : Int , _, _, _, _, _){
 		switch (keyCode) {
 			case Key.key_r:
-				reset();
+				if(lshiftDown || rshiftDown) particles.reset();
+				else reset();
 			case Key.key_p:
 				renderParticlesEnabled = !renderParticlesEnabled;
 			case Key.key_d:
 				renderFluidEnabled = !renderFluidEnabled;
 			case Key.key_s:
 				fluid.clear();
+			case Key.lshift: 
+				lshiftDown = false;
+			case Key.rshift: 
+				rshiftDown = false;
 		}
 	}
 }
