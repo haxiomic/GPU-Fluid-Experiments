@@ -21,7 +21,9 @@ class Web{
 			})();
 		");
 
-		for(f in Reflect.fields(paramObj)) result.set(f, Reflect.field(paramObj, f));
+		for(f in Reflect.fields(paramObj))
+			result.set(f, Reflect.field(paramObj, f));
+			
 		return result;
 	}
 }

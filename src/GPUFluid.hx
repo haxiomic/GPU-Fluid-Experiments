@@ -1,13 +1,10 @@
 package;
 
 import snow.render.opengl.GL;
-import snow.utils.Float32Array;
 
 import gltoolbox.render.RenderTarget2Phase;
 import gltoolbox.render.RenderTarget;
 import shaderblox.ShaderBase;
-
-import Main.Vector2;
 
 class GPUFluid{
 	var gl = GL;
@@ -59,13 +56,13 @@ class GPUFluid{
 
 		//create texture
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
-		var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGBA, gl.FLOAT , gl.NEAREST);
+		var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGB, gl.FLOAT , gl.NEAREST);
 
 		velocityRenderTarget = new RenderTarget2Phase(width, height, 
 			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGBA, 
+				gl.RGB, 
 				gl.FLOAT, 
-				gl.LINEAR //texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
+				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
 			)
 		);
 		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
@@ -74,7 +71,7 @@ class GPUFluid{
 			width,
 			height,
 			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGBA, 
+				gl.RGB, 
 				gl.FLOAT, 
 				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
 			)
@@ -119,9 +116,6 @@ class GPUFluid{
 		pressureRenderTarget.clear(gl.COLOR_BUFFER_BIT);
 		dyeRenderTarget.clear(gl.COLOR_BUFFER_BIT);
 	}
-
-	public function simToClipSpaceX(simX:Float) return simX/(this.cellSize * this.aspectRatio);
-	public function simToClipSpaceY(simY:Float) return simY/(this.cellSize);
 
 	public inline function advect(target:RenderTarget2Phase, dt:Float){
 		advectShader.dt.set(dt);
@@ -174,7 +168,7 @@ class GPUFluid{
 	}
 
 	inline function updateDye(dt:Float){
-		if(updateDyeShader==null)return;
+		if(updateDyeShader==null) return;
 		//set uniforms
 		updateDyeShader.dt.set(dt);
 		updateDyeShader.dye.set(dyeRenderTarget.readFromTexture);
@@ -191,7 +185,7 @@ class GPUFluid{
 	}
 
 	inline function updateCoreShaderUniforms(shader:FluidBase){
-		if(shader==null)return;
+		if(shader==null) return;
 		//set uniforms
 		shader.aspectRatio.set(this.aspectRatio);
 		shader.invresolution.data.x = 1/this.width;
@@ -221,6 +215,8 @@ class GPUFluid{
 		pressureSolveShader.alpha.set(-cellSize*cellSize);
 		return cellSize; 
 	}
+
+	//Coordinate conversions
 }
 
 @:vert('#pragma include("src/shaders/glsl/fluid/texel-space.vert")')

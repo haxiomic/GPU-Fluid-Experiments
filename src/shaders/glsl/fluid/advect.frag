@@ -4,15 +4,18 @@ uniform float dt;
 uniform float rdx; //reciprocal of grid scale, used to scale velocity into simulation domain
 
 varying vec2 texelCoord;
-varying vec2 p;
+varying vec2 p;//aspect space
 
 void main(void){
   //texelCoord refers to the center of the texel! Not a corner!
   
-  vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy;
+  vec2 tracedPos = p - dt * rdx * texture2D(velocity, texelCoord ).xy; //aspect space
 
-  //Bilinear Interpolation of the target field value at tracedPos 
-  tracedPos = simToTexelSpace(tracedPos)/invresolution; // texel coordinates
+  //Bilinear Interpolation of the target field value at tracedPos
+  //convert from aspect space to texel space (0 -> 1 | x & y)
+  tracedPos = aspectToTexelSpace(tracedPos);
+  //convert from texel space to pixel space (0 -> w)
+  tracedPos /= invresolution;
   
   vec4 st;
   st.xy = floor(tracedPos-.5)+.5; //left & bottom cell centers
@@ -20,7 +23,7 @@ void main(void){
 
   vec2 t = tracedPos - st.xy;
 
-  st*=invresolution.xyxy; //to unitary coords
+  st *= invresolution.xyxy; //to unitary coords
   
   vec4 tex11 = texture2D(target, st.xy );
   vec4 tex21 = texture2D(target, st.zy );

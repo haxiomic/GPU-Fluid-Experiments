@@ -7,9 +7,9 @@ varying vec2 texelCoord;
 
 /*
 --- Simulation Position ---
-Clip space where aspect ratio is maintained and height is fixed at 1
+Aspect space coordinates is clip space where aspect ratio is maintained and height is fixed at 1
 */
-varying vec2 p;
+varying vec2 p;//aspect space
 
 void main() {
 	texelCoord = vertexPosition;

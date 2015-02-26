@@ -1,13 +1,21 @@
+/*
+TODO
+* Remove FlowVelocityField (or add it as optional with a const bool)
+* Ensure POT textures by choosing dimensions carefully from the count
+ 	(eg: change: var dataWidth:Int = Math.ceil( Math.sqrt(newCount) );)
+ 	* currently requiring POT square, we need an alogo to find nearest pot rectangle
+*/
+
+
 package;
 
 import snow.render.opengl.GL;
-import snow.utils.Float32Array;
+import snow.io.typedarray.Float32Array;
 
 import gltoolbox.GeometryTools;
 import gltoolbox.render.RenderTarget2Phase;
 import shaderblox.ShaderBase;
 
-import Main.Vector2;
 
 class GPUParticles{
 	var gl = GL;
@@ -27,12 +35,12 @@ class GPUParticles{
 
 	var textureQuad:GLBuffer;
 
-	public function new(count:Int = 524288){
+	public function new(count:Int){
 		#if js //load floating point texture extension
 		gl.getExtension('OES_texture_float');
 		#end
 		#if !js
-		gl.enable(gl.VERTEX_PROGRAM_POINT_SIZE);//enable gl_PointSize (auto enabled in webgl)
+		gl.enable(gl.VERTEX_PROGRAM_POINT_SIZE);//enable gl_PointSize (always enabled in webgl)
 		#end
 
 		//quad for writing to textures
@@ -78,21 +86,23 @@ class GPUParticles{
 			this.particleData = new RenderTarget2Phase(dataWidth, dataHeight, gltoolbox.TextureTools.floatTextureFactoryRGBA);
 		}
 
-		
 		//create particle vertex buffers that direct vertex shaders to particles to texel coordinates
 		if(this.particleUVs != null) gl.deleteBuffer(this.particleUVs);//clear old buffer
+
 		this.particleUVs = gl.createBuffer();
 
-		var arrayUVs = new Array<Float>();
+		var arrayUVs = new Float32Array(dataWidth*dataHeight*2);//flattened by columns
+		var index:Int;
 		for(i in 0...dataWidth){
 			for(j in 0...dataHeight){
-				arrayUVs.push(i/dataWidth);
-				arrayUVs.push(j/dataHeight);
+				index = (i*dataHeight + j)*2;
+				arrayUVs[index] = i/dataWidth;
+				arrayUVs[++index] = j/dataHeight;
 			}
 		}
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.particleUVs);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arrayUVs), gl.STATIC_DRAW);
+		gl.bufferData(gl.ARRAY_BUFFER, arrayUVs, gl.STATIC_DRAW);
 		gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 		return this.count = newCount;
@@ -165,7 +175,7 @@ class ParticleBase extends PlaneTexture{}
 		vec2 vf = texture2D(flowVelocityField, (p+1.)*.5).xy * flowScale;//(converts clip-space p to texel coordinates)
 		v += (vf - v) * dragCoefficient;
 
-		p+=dt*v;
+		p += dt*v;
 		gl_FragColor = vec4(p, v);
 	}
 ')

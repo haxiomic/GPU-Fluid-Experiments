@@ -5,15 +5,15 @@ import haxe.Timer;
 import snow.render.opengl.GL;
 import snow.input.Input;
 import snow.types.Types;
-import snow.utils.Float32Array;
+// import snow.utils.Float32Array;
 import snow.window.Window;
-import snow.App;
 import snow.types.Types;
 
 import gltoolbox.render.RenderTarget;
 import shaderblox.ShaderBase;
+import shaderblox.uniforms.UVec2.Vector2;
 
-class Main extends App {
+class Main extends snow.App{
 	var gl = GL;
 	//Simulations
 	var fluid:GPUFluid;
@@ -54,21 +54,20 @@ class Main extends App {
 
 	var window:Window;
 
-	static inline var OFFSCREEN_RENDER = true;//seems to be faster when on!
+	static inline var OFFSCREEN_RENDER = false;//seems to be faster when on!
 	
 	public function new () {
 		super();
 
 		performanceMonitor = new PerformanceMonitor(35, null, 2000);
 
-		simulationQuality = High;
+		simulationQuality = Medium;
 
 		#if desktop
-		simulationQuality = UltraHigh;
+		simulationQuality = High;
 		#elseif ios
 		simulationQuality = iOS;
 		#end
-
 
 		#if js
 		performanceMonitor.fpsTooLowCallback = lowerQualityRequired; //auto adjust quality
@@ -98,37 +97,22 @@ class Main extends App {
 
 	override function config( config:AppConfig ) : AppConfig {
 		config.web.no_context_menu = false;
-		#if !desktop
-			config.window.borderless = true;
-			config.window.fullscreen = true;
-		#end
+		config.window.borderless = true;
+		config.window.fullscreen = true;
+		config.window.title = "GPU Fluid";
+
+		config.render.antialiasing = 0;
 	    return config;
 	}
 
 	override function ready(){
 		this.window = app.window;
 
-        //hacky work around to make sure we only init after the window dimensions are set
-        //#! bug: 
-        //	- window dimensions when fullscreen are not set at ready()
-        //	- window events are not firing correctly in mac (eg, created not firing)
-        var windowInitialized = false;
-        this.window.onevent = function(?e:WindowEvent){
-        	trace(e.type, WindowEventType.created);
-        	switch (e.type) {
-        		case WindowEventType.created, WindowEventType.size_changed, WindowEventType.shown:
-        			if(!windowInitialized){
-						init();
-				        this.window.onrender = render;
-	        			windowInitialized = true;
-        			}
-        		default: null;
-        	}
-        }
+		init();
+		this.window.onrender = render;
 	}
 
 	function init():Void {
-
 		gl.disable(gl.DEPTH_TEST);
 		gl.disable(gl.CULL_FACE);
 		gl.disable(gl.DITHER);
@@ -137,25 +121,27 @@ class Main extends App {
 
 		textureQuad = gltoolbox.GeometryTools.createQuad(0, 0, 1, 1);
 
-		offScreenTarget = new RenderTarget(
-			Math.round(window.width*offScreenScale),
-			Math.round(window.height*offScreenScale),
-			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGB,
-				gl.UNSIGNED_BYTE,
-				offScreenFilter
-			)
-		);
+		if(OFFSCREEN_RENDER){
+			offScreenTarget = new RenderTarget(
+				Math.round(window.width*offScreenScale),
+				Math.round(window.height*offScreenScale),
+				gltoolbox.TextureTools.createTextureFactory(
+					gl.RGB,
+					gl.UNSIGNED_BYTE,
+					offScreenFilter
+				)
+			);
+		}
 
 		screenTextureShader = new ScreenTexture();
 		renderParticlesShader = new ColorParticleMotion();
 		updateDyeShader = new MouseDye();
 		mouseForceShader = new MouseForce();
 
-		updateDyeShader.mouseClipSpace.data = mouseClipSpace;
-		updateDyeShader.lastMouseClipSpace.data = lastMouseClipSpace;
-		mouseForceShader.mouseClipSpace.data = mouseClipSpace;
-		mouseForceShader.lastMouseClipSpace.data = lastMouseClipSpace;
+		updateDyeShader.mouse.data = mouseClipSpace;
+		updateDyeShader.lastMouse.data = lastMouseClipSpace;
+		mouseForceShader.mouse.data = mouseClipSpace;
+		mouseForceShader.lastMouse.data = lastMouseClipSpace;
 
 		var cellScale = 32;
 		fluid = new GPUFluid(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale), cellScale, fluidIterations);
@@ -163,91 +149,23 @@ class Main extends App {
 		fluid.applyForcesShader = mouseForceShader;
 
 		particles = new GPUParticles(particleCount);
-		particles.flowScaleX = fluid.simToClipSpaceX(1);
-		particles.flowScaleY = fluid.simToClipSpaceY(1);
+		//scale from fluid's velocity field to clipSpace, which the particle velocity uses
+		particles.flowScaleX = 1/(fluid.cellSize * fluid.aspectRatio);
+		particles.flowScaleY = 1/fluid.cellSize;
 		particles.dragCoefficient = 1;
 
-		#if js
-		/*
-		//Google Analytics
-		//on pageview
-		untyped ga('send', 'pageview', {
-			  'dimension2':  Std.string(gl.getExtension('OES_texture_float_linear') != null),
-			  'dimension3':  Std.string(gl.getExtension('OES_texture_float') != null)
-		});
-		
-		var clickCount = 0;
-		lime.ui.MouseEventManager.onMouseUp.add(function(x:Float, y:Float, button:Int) clickCount++);
-		//after a short time has elapsed
-		haxe.Timer.delay(function(){
-			var fps = performanceMonitor.fpsAverage;
-			untyped ga('set', {
-				'metric1': Math.round(fps != null ? fps : 0),
-				'metric2': particleCount,
-				'metric3': fluidIterations,
-				'metric4': fluidScale,
-				'metric5': fluid.width * fluid.height,
-				'metric6': clickCount,
-				'dimension1': Type.enumConstructor(simulationQuality),
-			});
-		}, 6000);
-
-		//dat.GUI
-		//create controls
-		var gui = new dat.GUI({autoPlace: true});
-		//particle count
-		var particleCountGUI = gui.add(particles, 'count').name('Particle Count').listen();
-		particleCountGUI.__li.className = particleCountGUI.__li.className+' disabled';
-		untyped particleCountGUI.__input.disabled = true;//	disable editing
-		//quality
-		gui.add(this, 'simulationQuality', Type.allEnums(SimulationQuality)).onChange(function(v){
-			js.Browser.window.location.href = StringTools.replace(js.Browser.window.location.href, js.Browser.window.location.search, '') + '?q=' + v;//remove query string
-		}).name('Quality').listen();
-		//fluid iterations
-		gui.add(this, 'fluidIterations', 1, 50).name('Solver Iterations').onChange(function(v) fluidIterations = v);
-		//rest particles
-		gui.add({f:particles.reset}, 'f').name('Reset Particles');
-		//stop fluid
-		gui.add({f:fluid.clear}, 'f').name('Stop Fluid');
-
-		//view source
-		var viewSourceGUI = gui.add({f:function(){
-			js.Browser.window.open('http://github.com/haxiomic/GPU-Fluid-Experiments', '_blank');
-		}}, 'f').name('View Source');
-		viewSourceGUI.__li.className = 'cr link footer';//remove any other classes
-		//	add github icon
-		var githubIconEl = js.Browser.document.createElement('span');
-		githubIconEl.className = 'icon-github';
-		githubIconEl.style.lineHeight = viewSourceGUI.__li.clientHeight + 'px';
-		viewSourceGUI.domElement.parentElement.appendChild(githubIconEl);
-		// //twitter
-		var twitterGUI = gui.add({f:function(){
-			js.Browser.window.open('http://twitter.com/haxiomic', '_blank');
-		}}, 'f').name('@haxiomic');
-		twitterGUI.__li.className = 'cr link footer';//remove any other classes
-		// //	add twitter icon
-		var twitterIconEl = js.Browser.document.createElement('span');
-		twitterIconEl.className = 'icon-twitter';
-		twitterIconEl.style.lineHeight = twitterGUI.__li.clientHeight + 'px';
-		twitterGUI.domElement.parentElement.appendChild(twitterIconEl);
-		*/
+		#if ios
+		renderParticlesShader.POINT_SIZE = "4.0";
 		#end
 
 		lastTime = haxe.Timer.stamp();
 	}
 
-	function render (?w:snow.window.Window):Void {
-		time = haxe.Timer.stamp();
-		var dt = time - lastTime; //60fps ~ 0.016
-		lastTime = time;
-
-		// performanceMonitor.recordFrameTime(dt);
-
-		//update mouse velocity
-		if(lastMousePointKnown){
-			updateDyeShader.isMouseDown.set(isMouseDown);
-			mouseForceShader.isMouseDown.set(isMouseDown);
-		}
+	override function update( dt:Float ){
+		//Physics
+		//interaction
+		updateDyeShader.isMouseDown.set(isMouseDown && lastMousePointKnown);
+		mouseForceShader.isMouseDown.set(isMouseDown && lastMousePointKnown);
 
 		//step physics
 		fluid.step(dt);
@@ -255,6 +173,15 @@ class Main extends App {
 		particles.flowVelocityField = fluid.velocityRenderTarget.readFromTexture;
 		if(renderParticlesEnabled) particles.step(dt);
 
+		updateLastMouse();
+	}
+
+	function render (?w:snow.window.Window):Void {
+		// time = haxe.Timer.stamp();
+		// var dt = time - lastTime; //60fps ~ 0.016
+		// lastTime = time;
+
+		//Render
 		//render to offScreen
 		if(OFFSCREEN_RENDER){
 			gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
@@ -283,8 +210,6 @@ class Main extends App {
 			gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
 			renderTexture(offScreenTarget.texture);
 		}
-
-		updateLastMouse();
 	}
 
 	inline function renderTexture(texture:GLTexture){
@@ -355,9 +280,9 @@ class Main extends App {
 				offScreenScale = 1/2;
 				offScreenFilter = GL.NEAREST;
 			case iOS:
-				particleCount = 1 << 16;
+				particleCount = 1 << 14;
 				fluidScale = 1/10;
-				fluidIterations = 8;
+				fluidIterations = 6;
 				offScreenScale = 1/2;
 				offScreenFilter = GL.LINEAR;
 		}
@@ -418,10 +343,9 @@ class Main extends App {
 	}
 
 	//coordinate conversion
-	inline function windowToClipSpaceX(x:Float)return (x/window.width)*2 - 1;
-	inline function windowToClipSpaceY(y:Float)return ((window.height-y)/window.height)*2 - 1;
+	inline function windowToClipSpaceX(x:Float) return (x/window.width)*2 - 1;
+	inline function windowToClipSpaceY(y:Float) return ((window.height-y)/window.height)*2 - 1;
 
-	#if !mobile
 	override function onmousedown( x : Float , y : Float , button : Int, _, _){
 		this.isMouseDown = true; 
 	}
@@ -437,33 +361,6 @@ class Main extends App {
 		);
 		mousePointKnown = true;
 	}
-	#end
-
-	function updateTouchCoordinate(x:Float, y:Float){
-		x = x*window.width;
-		y = y*window.height;
-		mouse.set(x, y);
-		mouseClipSpace.set(
-			windowToClipSpaceX(x),
-			windowToClipSpaceY(y)
-		);
-		mousePointKnown = true;
-	}
-	override function ontouchdown(x,y,_,_){
-		updateTouchCoordinate(x,y);
-		updateLastMouse();
-		this.isMouseDown = true; 
-	}
-
-	override function ontouchup(x,y,_,_){
-		updateTouchCoordinate(x,y);
-		this.isMouseDown = false;
-	}
-
-	override function ontouchmove(x:Float,y:Float,_,_,_,_){
-		updateTouchCoordinate(x,y);
-	}
-
 
 	inline function updateLastMouse(){
 		lastMouse.set(mouse.x, mouse.y);
@@ -473,6 +370,33 @@ class Main extends App {
 		);
 		lastMousePointKnown = true && mousePointKnown;
 	}
+
+	// override function ontouchdown(x:Float,y:Float,touch_id:Int,_){
+	// 	updateTouchCoordinate(x,y);
+	// 	updateLastMouse();
+	// 	this.isMouseDown = true; 
+	// }
+
+	// override function ontouchup(x:Float,y:Float,touch_id:Int,_){
+	// 	updateTouchCoordinate(x,y);
+	// 	this.isMouseDown = false;
+	// }
+
+	// override function ontouchmove(x:Float,y:Float,dx:Float,dy:Float,touch_id:Int,_){
+	// 	updateTouchCoordinate(x,y);
+	// }
+
+
+	// function updateTouchCoordinate(x:Float, y:Float){
+	// 	x = x*window.width;
+	// 	y = y*window.height;
+	// 	mouse.set(x, y);
+	// 	mouseClipSpace.set(
+	// 		windowToClipSpaceX(x),
+	// 		windowToClipSpaceY(y)
+	// 	);
+	// 	mousePointKnown = true;
+	// }
 
 
 	var lshiftDown = false;
@@ -505,8 +429,6 @@ class Main extends App {
 	}
 }
 
-typedef Vector2 = shaderblox.uniforms.UVec2.Vector2;
-
 enum SimulationQuality{
 	UltraHigh;
 	High;
@@ -516,18 +438,20 @@ enum SimulationQuality{
 	iOS;
 }
 
+
 @:vert('#pragma include("src/shaders/glsl/no-transform.vert")')
 @:frag('#pragma include("src/shaders/glsl/quad-texture.frag")')
 class ScreenTexture extends ShaderBase {}
 
 @:vert('
+	const float POINT_SIZE = 1.0;
 	void main(){
 		vec2 p = texture2D(particleData, particleUV).xy;
 		vec2 v = texture2D(particleData, particleUV).zw;
-		gl_PointSize = 1.0;
+		gl_PointSize = POINT_SIZE;
 		gl_Position = vec4(p, 0.0, 1.0);
 		float speed = length(v);
-		float x = clamp(speed * 1.0, 0., 1.);
+		float x = clamp(speed * 2.0, 0., 1.);
 		color.rgb = (
 				mix(vec3(40.4, 0.0, 35.0) / 300.0, vec3(0.2, 47.8, 100) / 100.0, x)
 				+ (vec3(63.1, 92.5, 100) / 100.) * x*x*x * .1
@@ -539,20 +463,17 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 
 @:frag('
 	#pragma include("src/shaders/glsl/geom.glsl")
-
 	uniform bool isMouseDown;
-	uniform vec2 mouseClipSpace;
-	uniform vec2 lastMouseClipSpace;
-
+	uniform vec2 mouse;
+	uniform vec2 lastMouse;
 	void main(){
 		vec4 color = texture2D(dye, texelCoord);
-
 		color.r *= (0.9797);
 		color.g *= (0.9494);
 		color.b *= (0.9696);
 		if(isMouseDown){			
-			vec2 mouse = clipToSimSpace(mouseClipSpace);
-			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
+			clipToAspectSpace(mouse);
+			clipToAspectSpace(lastMouse);
 			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
 			
 			//compute tapered distance to mouse line segment
@@ -560,18 +481,16 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
 			float taperFactor = 0.6;
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
-
 			float R = 0.025;
 			float m = exp(-l/R);
 			
- 			float speed = length(mouseVelocity);
+				float speed = length(mouseVelocity);
 			float x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);
 			color.rgb += m * (
 				mix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)
- 				+ (vec3(100) / 100.) * pow(x, 9.)
+					+ (vec3(100) / 100.) * pow(x, 9.)
 			);
 		}
-
 		gl_FragColor = color;
 	}
 ')
@@ -579,21 +498,16 @@ class MouseDye extends GPUFluid.UpdateDye{}
 
 @:frag('
 	#pragma include("src/shaders/glsl/geom.glsl")
-
 	uniform bool isMouseDown;
-	uniform vec2 mouseClipSpace;
-	uniform vec2 lastMouseClipSpace;
-
+	uniform vec2 mouse;
+	uniform vec2 lastMouse;
 	void main(){
 		vec2 v = texture2D(velocity, texelCoord).xy;
-
 		v.xy *= 0.999;
-
 		if(isMouseDown){
-			vec2 mouse = clipToSimSpace(mouseClipSpace) ;
-			vec2 lastMouse = clipToSimSpace(lastMouseClipSpace);
+			clipToAspectSpace(mouse);
+			clipToAspectSpace(lastMouse);
 			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
-
 			// mouse = mouse - (lastMouse - mouse) * 2.0;//predict mouse position
 				
 			//compute tapered distance to mouse line segment
@@ -601,15 +515,12 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
 			float taperFactor = 0.6;//1 => 0 at lastMouse, 0 => no tapering
 			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
-
 			float R = 0.015;
 			float m = exp(-l/R); //drag coefficient
 			m *= projectedFraction * projectedFraction;
-
 			vec2 targetVelocity = mouseVelocity * dx * 1.4;
 			v += (targetVelocity - v)*m;
 		}
-
 		gl_FragColor = vec4(v, 0, 1.);
 	}
 ')

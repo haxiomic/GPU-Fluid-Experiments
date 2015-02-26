@@ -1,3 +1,5 @@
+With AA disabled, snow is significantly faster than lime
+
 iOS Port:
 	- Be careful about unfinsihed  half_float business in gltoolbox
 	view controller based status bar still causes issues

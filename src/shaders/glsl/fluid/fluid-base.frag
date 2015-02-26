@@ -1,15 +1,36 @@
+/*
+aspectRatio = w/h
+
+#Coordinate Spaces
+
+    Clip Space,     -1 -> 1 | x & y
+
+    Aspect Space,   -aspectRatio -> aspectRatio | x
+                                        -1 -> 1 | y
+        * Same as clip space but maintains aspect ratio by fixing height
+
+    Sim Space,      (Aspect Space) * cellSize
+        * Used for the flow velocity, this is the space the physics takes place in
+
+    Texel Space,    0 -> 1 | x & y
+        * Texture coordinates for use in texture2D
+
+    Pixel Space,    0 -> w | x
+                    0 -> h | y
+*/
+
 #define PRESSURE_BOUNDARY
 #define VELOCITY_BOUNDARY
 
 uniform vec2 invresolution;
 uniform float aspectRatio;
 
-vec2 clipToSimSpace(vec2 clipSpace){
-    return  vec2(clipSpace.x * aspectRatio, clipSpace.y);
+vec2 clipToAspectSpace(vec2 p){
+    return vec2(p.x * aspectRatio, p.y);
 }
 
-vec2 simToTexelSpace(vec2 simSpace){
-    return vec2(simSpace.x / aspectRatio + 1.0 , simSpace.y + 1.0)*.5;
+vec2 aspectToTexelSpace(vec2 p){
+    return vec2(p.x / aspectRatio + 1.0 , p.y + 1.0)*.5;
 }
 
 //sampling pressure texture factoring in boundary conditions

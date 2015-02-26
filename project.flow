@@ -6,24 +6,20 @@
     author : 'haxiomic',
 
     app : {
-      name : 'GPU Fluid',
+      name : 'GPUFluid',
       package : 'com.haxiomic.gpufluid',
       main: 'Main',
       output: 'bin/',
       codepaths: ['src']
     },
 
-    build : {
+    build : {      
       dependencies : {
         snow : '*',
         shaderblox : '*',
         gltoolbox : '*',
-      }
-    },
-
-    files : {
-      config : 'config.json',
-    },
+      },
+    }
 
   }
 
