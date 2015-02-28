@@ -3,7 +3,6 @@ uniform float halfrdx;	// .5*1/gridscale
 
 varying vec2 texelCoord;
 
-
 void main(void){
 	//compute the divergence according to the finite difference formula
  	//texelSize = 1/resolution

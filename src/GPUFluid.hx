@@ -217,6 +217,8 @@ class GPUFluid{
 	}
 
 	//Coordinate conversions
+	public inline function clipToAspectSpaceX(clipX:Float) return clipX * aspectRatio;
+	public inline function clipToAspectSpaceY(clipY:Float) return clipY;
 }
 
 @:vert('#pragma include("src/shaders/glsl/fluid/texel-space.vert")')

@@ -5,7 +5,6 @@ import haxe.Timer;
 import snow.render.opengl.GL;
 import snow.input.Input;
 import snow.types.Types;
-// import snow.utils.Float32Array;
 import snow.window.Window;
 import snow.types.Types;
 
@@ -34,9 +33,9 @@ class Main extends snow.App{
 	var mousePointKnown:Bool = false;
 	var lastMousePointKnown:Bool = false;
 	var mouse = new Vector2();
-	var mouseClipSpace = new Vector2();
+	var mouseFluid = new Vector2();
 	var lastMouse = new Vector2();
-	var lastMouseClipSpace = new Vector2();
+	var lastMouseFluid = new Vector2();
 	var time:Float;
 	var lastTime:Float;
 	//Drawing
@@ -138,10 +137,10 @@ class Main extends snow.App{
 		updateDyeShader = new MouseDye();
 		mouseForceShader = new MouseForce();
 
-		updateDyeShader.mouse.data = mouseClipSpace;
-		updateDyeShader.lastMouse.data = lastMouseClipSpace;
-		mouseForceShader.mouse.data = mouseClipSpace;
-		mouseForceShader.lastMouse.data = lastMouseClipSpace;
+		updateDyeShader.mouse.data = mouseFluid;
+		updateDyeShader.lastMouse.data = lastMouseFluid;
+		mouseForceShader.mouse.data = mouseFluid;
+		mouseForceShader.lastMouse.data = lastMouseFluid;
 
 		var cellScale = 32;
 		fluid = new GPUFluid(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale), cellScale, fluidIterations);
@@ -355,18 +354,18 @@ class Main extends snow.App{
 
 	override function onmousemove( x : Float , y : Float , xrel:Int, yrel:Int, _, _) {
 		mouse.set(x, y);
-		mouseClipSpace.set(
-			windowToClipSpaceX(x),
-			windowToClipSpaceY(y)
+		mouseFluid.set(
+			fluid.clipToAspectSpaceX(windowToClipSpaceX(x)),
+			fluid.clipToAspectSpaceY(windowToClipSpaceY(y))
 		);
 		mousePointKnown = true;
 	}
 
 	inline function updateLastMouse(){
 		lastMouse.set(mouse.x, mouse.y);
-		lastMouseClipSpace.set(
-			windowToClipSpaceX(mouse.x),
-			windowToClipSpaceY(mouse.y)
+		lastMouseFluid.set(
+			fluid.clipToAspectSpaceX(windowToClipSpaceX(mouse.x)),
+			fluid.clipToAspectSpaceY(windowToClipSpaceY(mouse.y))
 		);
 		lastMousePointKnown = true && mousePointKnown;
 	}
@@ -391,7 +390,7 @@ class Main extends snow.App{
 	// 	x = x*window.width;
 	// 	y = y*window.height;
 	// 	mouse.set(x, y);
-	// 	mouseClipSpace.set(
+	// 	mouseFluid.set(
 	// 		windowToClipSpaceX(x),
 	// 		windowToClipSpaceY(y)
 	// 	);
@@ -464,7 +463,7 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 @:frag('
 	#pragma include("src/shaders/glsl/geom.glsl")
 	uniform bool isMouseDown;
-	uniform vec2 mouse;
+	uniform vec2 mouse; //aspect space coordinates
 	uniform vec2 lastMouse;
 	void main(){
 		vec4 color = texture2D(dye, texelCoord);
@@ -472,8 +471,6 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 		color.g *= (0.9494);
 		color.b *= (0.9696);
 		if(isMouseDown){			
-			clipToAspectSpace(mouse);
-			clipToAspectSpace(lastMouse);
 			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
 			
 			//compute tapered distance to mouse line segment
@@ -499,14 +496,12 @@ class MouseDye extends GPUFluid.UpdateDye{}
 @:frag('
 	#pragma include("src/shaders/glsl/geom.glsl")
 	uniform bool isMouseDown;
-	uniform vec2 mouse;
+	uniform vec2 mouse; //aspect space coordinates
 	uniform vec2 lastMouse;
 	void main(){
 		vec2 v = texture2D(velocity, texelCoord).xy;
 		v.xy *= 0.999;
 		if(isMouseDown){
-			clipToAspectSpace(mouse);
-			clipToAspectSpace(lastMouse);
 			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
 			// mouse = mouse - (lastMouse - mouse) * 2.0;//predict mouse position
 				

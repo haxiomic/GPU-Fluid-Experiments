@@ -1,4 +1,9 @@
-/* Converts to clip space, given resolution of display in pixel space */ 
+/* 
+Takes TextureQuad vertex coordinates 
+* Converts to clip-space for display 
+* Converts to aspect-space for use in fragment shaders 
+	(to maintain aspect ratio)
+*/
 attribute vec2 vertexPosition;
 
 uniform float aspectRatio;
