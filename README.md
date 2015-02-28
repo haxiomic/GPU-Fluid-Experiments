@@ -1,3 +1,5 @@
+**Temporarily not compiling - libraries involved undergoing change, contact me for the details**
+
 #Cross-platform GPU fluid simulation
 ----
 Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid simulation in OpenGL ES. 
