@@ -1,5 +1,3 @@
-**Temporarily not compiling - libraries involved undergoing change, contact me for the details**
-
 #Cross-platform GPU fluid simulation
 ----
 Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid simulation in OpenGL ES. 
@@ -19,6 +17,8 @@ Experimenting coupling a CPU-based rigid body simulation with a GPU-based fluid 
 - [my fork of shaderblox](http://github.com/haxiomic/shaderblox) (by [Sunjammer](https://github.com/Sunjammer))
 
 ####Building
+**Temporarily not compiling - libraries involved undergoing change, contact me for the details**
+
 Install [haxe](http://haxe.org/), then install the build tool **aether** from haxelib\*
 
 ```haxelib install aether```
@@ -45,7 +45,7 @@ A browser should open with the result (*test* is aether's build and run command.
 
 ---------------
 
-####Can I build for Desktop and mobile targets?
+####Can I build for desktop and mobile targets?
 Desktop yes, mobile not yet. The lime library isn't quite finished, so it's not a super smooth process, follow the instructions on [lime's git page](https://github.com/openfl/lime/) to build lime's native binaries and then run
 ```aether test mac``` or ```aether test windows``` or ```aether test linux```. I've only tested the mac c++ build.
 
