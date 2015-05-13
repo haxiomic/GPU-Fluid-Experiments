@@ -1,6 +1,6 @@
 #Cross-platform GPU fluid simulation
 ----
-Using [snow](http://snowkit.org/) instead of lime, **make sure you use my fork of shaderblox and the latest gltoolbox**
+Branch using [snow](http://snowkit.org/) instead of lime.
 
 ###[Demo](http://haxiomic.github.io/GPU-Fluid-Experiments/html5/)
 
@@ -32,9 +32,4 @@ That is a bit much to type out frequently so it’s worth making an alias, I use
 
 Then you can build and run with 'fweb'.
 
-
-####Requires:
-- [snow](https://github.com/underscorediscovery/snow)
-- [gltoolbox](http://github.com/haxiomic/gltoolbox)
-- [my fork of shaderblox](http://github.com/haxiomic/shaderblox) (by [Sunjammer](https://github.com/Sunjammer))
-- [Haxe](http://haxe.org/)
+(**Make sure you use my fork of shaderblox**)
