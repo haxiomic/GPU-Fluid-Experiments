@@ -2,10 +2,9 @@ package;
 
 import haxe.Timer;
 
-import snow.render.opengl.GL;
-import snow.input.Input;
+import snow.modules.opengl.GL;
 import snow.types.Types;
-import snow.window.Window;
+import snow.system.window.Window;
 import snow.types.Types;
 
 import gltoolbox.render.RenderTarget;
@@ -124,11 +123,11 @@ class Main extends snow.App{
 			offScreenTarget = new RenderTarget(
 				Math.round(window.width*offScreenScale),
 				Math.round(window.height*offScreenScale),
-				gltoolbox.TextureTools.createTextureFactory(
-					gl.RGB,
-					gl.UNSIGNED_BYTE,
-					offScreenFilter
-				)
+				gltoolbox.TextureTools.createTextureFactory({
+					channelType: gl.RGB,
+					dataType: gl.UNSIGNED_BYTE,
+					filter: offScreenFilter
+				})
 			);
 		}
 
@@ -161,6 +160,7 @@ class Main extends snow.App{
 	}
 
 	override function update( dt:Float ){
+		dt = 0.016;//@!
 		//Physics
 		//interaction
 		updateDyeShader.isMouseDown.set(isMouseDown && lastMousePointKnown);
@@ -175,7 +175,7 @@ class Main extends snow.App{
 		updateLastMouse();
 	}
 
-	function render (?w:snow.window.Window):Void {
+	function render (?w:Window):Void {
 		// time = haxe.Timer.stamp();
 		// var dt = time - lastTime; //60fps ~ 0.016
 		// lastTime = time;
@@ -470,24 +470,26 @@ class ColorParticleMotion extends GPUParticles.RenderParticles{}
 		color.r *= (0.9797);
 		color.g *= (0.9494);
 		color.b *= (0.9696);
+
 		if(isMouseDown){			
-			vec2 mouseVelocity = -(lastMouse - mouse)/dt;
+			vec2 mouseVelocity = (mouse - lastMouse)/dt;
 			
 			//compute tapered distance to mouse line segment
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
 			float taperFactor = 0.6;
-			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
+			float projectedFraction = 1.0 - clamp(projection, 0.0, 1.0)*taperFactor;
 			float R = 0.025;
 			float m = exp(-l/R);
 			
-				float speed = length(mouseVelocity);
+			float speed = length(mouseVelocity);
 			float x = clamp((speed * speed * 0.02 - l * 5.0) * projectedFraction, 0., 1.);
 			color.rgb += m * (
 				mix(vec3(2.4, 0, 5.9) / 60.0, vec3(0.2, 51.8, 100) / 30.0, x)
 					+ (vec3(100) / 100.) * pow(x, 9.)
 			);
 		}
+
 		gl_FragColor = color;
 	}
 ')
@@ -509,7 +511,7 @@ class MouseDye extends GPUFluid.UpdateDye{}
 			float projection;
 			float l = distanceToSegment(mouse, lastMouse, p, projection);
 			float taperFactor = 0.6;//1 => 0 at lastMouse, 0 => no tapering
-			float projectedFraction = 1.0 - clamp(projection / distance(mouse, lastMouse), 0.0, 1.0)*taperFactor;
+			float projectedFraction = 1.0 - clamp(projection, 0.0, 1.0)*taperFactor;
 			float R = 0.015;
 			float m = exp(-l/R); //drag coefficient
 			m *= projectedFraction * projectedFraction;

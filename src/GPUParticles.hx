@@ -9,8 +9,8 @@ TODO
 
 package;
 
-import snow.render.opengl.GL;
-import snow.io.typedarray.Float32Array;
+import snow.modules.opengl.GL;
+import snow.api.buffers.Float32Array;
 
 import gltoolbox.GeometryTools;
 import gltoolbox.render.RenderTarget2Phase;
@@ -44,7 +44,7 @@ class GPUParticles{
 		#end
 
 		//quad for writing to textures
-		textureQuad = GeometryTools.getCachedTextureQuad();
+		textureQuad = GeometryTools.getCachedUnitQuad();
 
 		//create shaders
 		inititalConditionsShader = new InitialConditions();
@@ -83,7 +83,7 @@ class GPUParticles{
 		if(this.particleData != null){
 			this.particleData.resize(dataWidth, dataHeight);
 		}else{
-			this.particleData = new RenderTarget2Phase(dataWidth, dataHeight, gltoolbox.TextureTools.floatTextureFactoryRGBA);
+			this.particleData = new RenderTarget2Phase(dataWidth, dataHeight, gltoolbox.TextureTools.createFloatTextureRGBA);
 		}
 
 		//create particle vertex buffers that direct vertex shaders to particles to texel coordinates

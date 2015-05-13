@@ -1,6 +1,6 @@
 package;
 
-import snow.render.opengl.GL;
+import snow.modules.opengl.GL;
 
 import gltoolbox.render.RenderTarget2Phase;
 import gltoolbox.render.RenderTarget;
@@ -52,29 +52,33 @@ class GPUFluid{
 
 		//geometry
 		//	inner quad, for main fluid shaders
-		textureQuad = gltoolbox.GeometryTools.getCachedTextureQuad();
+		textureQuad = gltoolbox.GeometryTools.getCachedUnitQuad();
 
 		//create texture
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
-		var nearestFactory = gltoolbox.TextureTools.createTextureFactory(gl.RGB, gl.FLOAT , gl.NEAREST);
+		var nearestFactory = gltoolbox.TextureTools.createTextureFactory({
+			channelType: gl.RGB,
+			dataType: gl.FLOAT,
+			filter: gl.NEAREST
+		});
 
 		velocityRenderTarget = new RenderTarget2Phase(width, height, 
-			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGB, 
-				gl.FLOAT, 
-				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
-			)
+			gltoolbox.TextureTools.createTextureFactory({
+				channelType: gl.RGB, 
+				dataType: gl.FLOAT, 
+				filter: texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
+			})
 		);
 		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
 		divergenceRenderTarget = new RenderTarget(width, height, nearestFactory);
 		dyeRenderTarget = new RenderTarget2Phase( 
 			width,
 			height,
-			gltoolbox.TextureTools.createTextureFactory(
-				gl.RGB, 
-				gl.FLOAT, 
-				texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
-			)
+			gltoolbox.TextureTools.createTextureFactory({
+				channelType: gl.RGB, 
+				dataType: gl.FLOAT, 
+				filter: texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
+			})
 		);
 
 		//texel-space parameters
