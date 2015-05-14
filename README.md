@@ -4,6 +4,8 @@ Branch using [snow](http://snowkit.org/) instead of lime.
 
 ###[Demo](http://haxiomic.github.io/GPU-Fluid-Experiments/html5/)
 
+If you have an idea and you want to collaborate, feel free to get in touch with me [haxiomic@gmail.com](mailto:haxiomic@gmail.com)
+
 ##Building
 Install the latest version of haxe from [haxe.org](http://haxe.org/)
 
