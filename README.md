@@ -1,5 +1,5 @@
 #Cross-platform GPU fluid simulation
-----
+
 Branch using [snow](http://snowkit.org/) instead of lime.
 
 ###[Demo](http://haxiomic.github.io/GPU-Fluid-Experiments/html5/)
@@ -20,16 +20,16 @@ Install the dependencies:
 
 and you should be good to go
 
-cd into the project root and run 
+cd into the project root and to build and run execute:
 
 	haxelib run flow run web
 
-to build and run (it'll start a server and open a web browser)
+ run (it'll start a server and open a web browser)
 
-That is a bit much to type out frequently so it’s worth making an alias, I use 
+That is a bit much to type out frequently so it’s worth making an alias, on OS X I use
 
 	alias fweb=“haxelib run flow run web --timeout 0”
 
 Then you can build and run with 'fweb'.
 
-(**Make sure you use my fork of shaderblox**)
+If you're on windows, there's some instructions on how to make an alias to flow here [underscorediscovery.github.io/flow/#install-the-flow-shortcut](http://underscorediscovery.github.io/flow/#install-the-flow-shortcut)
