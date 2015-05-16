@@ -18,7 +18,7 @@ Install the dependencies:
 'shaderblox' and 'gltoolbox':
 
 	haxelib git shaderblox https://github.com/haxiomic/shaderblox.git
-	haxelib git gltoolobox https://github.com/haxiomic/GLToolbox.git
+	haxelib git gltoolbox https://github.com/haxiomic/GLToolbox.git
 
 and you should be good to go
 
