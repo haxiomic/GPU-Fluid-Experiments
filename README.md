@@ -35,6 +35,8 @@ That is a bit much to type out frequently so it’s worth making an alias, on OS
 Then you can build and run with 'fweb'.
 
 If you're on windows, there's some instructions on how to make an alias to flow here [underscorediscovery.github.io/flow/#install-the-flow-shortcut](http://underscorediscovery.github.io/flow/#install-the-flow-shortcut).
+
+
 ------------------------------
 
 You can build it as a native desktop application which will run a little faster:
