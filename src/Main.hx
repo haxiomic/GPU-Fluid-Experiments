@@ -98,8 +98,16 @@ class Main extends snow.App{
 		config.window.borderless = true;
 		config.window.fullscreen = true;
 		config.window.title = "GPU Fluid";
+		//for some reason, window width and height are set initially from config in browsers and 
+		//ignores true size
+		#if js
+		config.window.width = js.Browser.window.innerWidth;
+		config.window.height = js.Browser.window.innerHeight;
+		#end
 
 		config.render.antialiasing = 0;
+
+
 	    return config;
 	}
 
