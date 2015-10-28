@@ -14,22 +14,6 @@ void main(void){
   //Bilinear Interpolation of the target field value at tracedPos
   //convert from aspect space to texel space (0 -> 1 | x & y)
   tracedPos = aspectToTexelSpace(tracedPos);
-  //convert from texel space to pixel space (0 -> w)
-  tracedPos /= invresolution;
-  
-  vec4 st;
-  st.xy = floor(tracedPos-.5)+.5; //left & bottom cell centers
-  st.zw = st.xy+1.;               //right & top centers
 
-  vec2 t = tracedPos - st.xy;
-
-  st *= invresolution.xyxy; //to unitary coords
-  
-  vec4 tex11 = texture2D(target, st.xy );
-  vec4 tex21 = texture2D(target, st.zy );
-  vec4 tex12 = texture2D(target, st.xw );
-  vec4 tex22 = texture2D(target, st.zw );
-
-  //need to bilerp this result
-  gl_FragColor = mix(mix(tex11, tex21, t.x), mix(tex12, tex22, t.x), t.y);
+  gl_FragColor = texture2D(target, tracedPos);
 }
