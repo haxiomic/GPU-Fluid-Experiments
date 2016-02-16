@@ -7,7 +7,7 @@ import gltoolbox.render.RenderTarget;
 import shaderblox.ShaderBase;
 
 class GPUFluid{
-	var gl = GL;
+	// var gl = GL;
 	public var width  (default, null) : Int;
 	public var height (default, null) : Int;
 
@@ -46,8 +46,8 @@ class GPUFluid{
 		//setup gl
 		#if js //load floating point extension
 			 //(no need for this unless we use linearFactory - for performance and compatibility, it's best to avoid this extension if possible!)
-			if(gl.getExtension('OES_texture_float_linear') == null) texture_float_linear_supported = false;
-			if(gl.getExtension('OES_texture_float') == null) null;
+			if(GL.getExtension('OES_texture_float_linear') == null) texture_float_linear_supported = false;
+			if(GL.getExtension('OES_texture_float') == null) null;
 		#end
 
 		//geometry
@@ -57,16 +57,16 @@ class GPUFluid{
 		//create texture
 		//	seems to run slightly faster with rgba instead of rgb in Chrome?
 		var nearestFactory = gltoolbox.TextureTools.createTextureFactory({
-			channelType: gl.RGB,
-			dataType: gl.FLOAT,
-			filter: gl.NEAREST
+			channelType: GL.RGB,
+			dataType: GL.FLOAT,
+			filter: GL.NEAREST
 		});
 
 		velocityRenderTarget = new RenderTarget2Phase(width, height, 
 			gltoolbox.TextureTools.createTextureFactory({
-				channelType: gl.RGB, 
-				dataType: gl.FLOAT, 
-				filter: texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
+				channelType: GL.RGB, 
+				dataType: GL.FLOAT, 
+				filter: texture_float_linear_supported ? GL.LINEAR : GL.NEAREST
 			})
 		);
 		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
@@ -75,9 +75,9 @@ class GPUFluid{
 			width,
 			height,
 			gltoolbox.TextureTools.createTextureFactory({
-				channelType: gl.RGB, 
-				dataType: gl.FLOAT, 
-				filter: texture_float_linear_supported ? gl.LINEAR : gl.NEAREST
+				channelType: GL.RGB, 
+				dataType: GL.FLOAT, 
+				filter: texture_float_linear_supported ? GL.LINEAR : GL.NEAREST
 			})
 		);
 
@@ -89,10 +89,10 @@ class GPUFluid{
 	}
 
 	public function step(dt:Float){
-		gl.viewport(0, 0, this.width, this.height);
+		GL.viewport(0, 0, this.width, this.height);
 
 		//inner quad
-		gl.bindBuffer(gl.ARRAY_BUFFER, textureQuad);
+		GL.bindBuffer(GL.ARRAY_BUFFER, textureQuad);
 
 		advect(velocityRenderTarget, dt);
 
@@ -116,9 +116,9 @@ class GPUFluid{
 	}
 
 	public inline function clear(){
-		velocityRenderTarget.clear(gl.COLOR_BUFFER_BIT);
-		pressureRenderTarget.clear(gl.COLOR_BUFFER_BIT);
-		dyeRenderTarget.clear(gl.COLOR_BUFFER_BIT);
+		velocityRenderTarget.clear(GL.COLOR_BUFFER_BIT);
+		pressureRenderTarget.clear(GL.COLOR_BUFFER_BIT);
+		dyeRenderTarget.clear(GL.COLOR_BUFFER_BIT);
 	}
 
 	public inline function advect(target:RenderTarget2Phase, dt:Float){
@@ -156,7 +156,7 @@ class GPUFluid{
 			//(not using renderShaderTo to allow for minor optimization)
 			pressureSolveShader.setUniforms();
 			pressureRenderTarget.activate();
-			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+			GL.drawArrays(GL.TRIANGLE_STRIP, 0, 4);
 			pressureRenderTarget.swap();
 		}
 		
@@ -184,7 +184,7 @@ class GPUFluid{
 	inline function renderShaderTo(shader:ShaderBase, target:gltoolbox.render.ITargetable){
 		shader.activate(true, true);
 		target.activate();
-		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+		GL.drawArrays(GL.TRIANGLE_STRIP, 0, 4);
 		shader.deactivate();
 	}
 

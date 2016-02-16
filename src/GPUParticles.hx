@@ -18,7 +18,7 @@ import shaderblox.ShaderBase;
 
 
 class GPUParticles{
-	var gl = GL;
+	// var gl = GL;
 
 	public var particleData:RenderTarget2Phase;
 	public var particleUVs:GLBuffer;
@@ -37,10 +37,10 @@ class GPUParticles{
 
 	public function new(count:Int){
 		#if js //load floating point texture extension
-		gl.getExtension('OES_texture_float');
+		GL.getExtension('OES_texture_float');
 		#end
 		#if !js
-		gl.enable(gl.VERTEX_PROGRAM_POINT_SIZE);//enable gl_PointSize (always enabled in webgl)
+		GL.enable(GL.VERTEX_PROGRAM_POINT_SIZE);//enable gl_PointSize (always enabled in webgl)
 		#end
 
 		//quad for writing to textures
@@ -87,9 +87,9 @@ class GPUParticles{
 		}
 
 		//create particle vertex buffers that direct vertex shaders to particles to texel coordinates
-		if(this.particleUVs != null) gl.deleteBuffer(this.particleUVs);//clear old buffer
+		if(this.particleUVs != null) GL.deleteBuffer(this.particleUVs);//clear old buffer
 
-		this.particleUVs = gl.createBuffer();
+		this.particleUVs = GL.createBuffer();
 
 		var arrayUVs = new Float32Array(dataWidth*dataHeight*2);//flattened by columns
 		var index:Int;
@@ -101,21 +101,21 @@ class GPUParticles{
 			}
 		}
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, this.particleUVs);
-		gl.bufferData(gl.ARRAY_BUFFER, arrayUVs, gl.STATIC_DRAW);
-		gl.bindBuffer(gl.ARRAY_BUFFER, null);
+		GL.bindBuffer(GL.ARRAY_BUFFER, this.particleUVs);
+		GL.bufferData(GL.ARRAY_BUFFER, arrayUVs, GL.STATIC_DRAW);
+		GL.bindBuffer(GL.ARRAY_BUFFER, null);
 
 		return this.count = newCount;
 	}
 
 	inline function renderShaderTo(shader:ShaderBase, target:RenderTarget2Phase){
-		gl.viewport(0, 0, target.width, target.height);
-		gl.bindFramebuffer(gl.FRAMEBUFFER, target.writeFrameBufferObject);
+		GL.viewport(0, 0, target.width, target.height);
+		GL.bindFramebuffer(GL.FRAMEBUFFER, target.writeFrameBufferObject);
 
-		gl.bindBuffer(gl.ARRAY_BUFFER, textureQuad);
+		GL.bindBuffer(GL.ARRAY_BUFFER, textureQuad);
 
 		shader.activate(true, true);
-		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+		GL.drawArrays(GL.TRIANGLE_STRIP, 0, 4);
 		shader.deactivate();
 
 		target.swap();
