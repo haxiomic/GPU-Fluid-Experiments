@@ -4,15 +4,15 @@ import haxe.Timer;
 
 import snow.modules.opengl.GL;
 import snow.types.Types;
-import snow.system.window.Window;
-import snow.types.Types;
 
 import gltoolbox.render.RenderTarget;
 import shaderblox.ShaderBase;
 import shaderblox.uniforms.UVec2.Vector2;
 
+typedef UserConfig = {}
+
 class Main extends snow.App{
-	var gl = GL;
+	// var gl = GL;
 	//Simulations
 	var fluid:GPUFluid;
 	var particles:GPUParticles;
@@ -50,12 +50,9 @@ class Main extends snow.App{
 	var offScreenFilter:Int;
 	var simulationQuality(default, set):SimulationQuality;
 
-	var window:Window;
-
 	static inline var OFFSCREEN_RENDER = false;//seems to be faster when on!
 	
 	public function new () {
-		super();
 
 		performanceMonitor = new PerformanceMonitor(35, null, 2000);
 
@@ -94,7 +91,10 @@ class Main extends snow.App{
 	}
 
 	override function config( config:AppConfig ) : AppConfig {
-		config.web.no_context_menu = false;
+		
+		#if js
+		config.runtime.prevent_default_context_menu = false;
+		#end
 		config.window.borderless = true;
 		config.window.fullscreen = true;
 		config.window.title = "GPU Fluid";
@@ -112,16 +112,15 @@ class Main extends snow.App{
 	}
 
 	override function ready(){
-		this.window = app.window;
 
 		init();
-		this.window.onrender = render;
+
 	}
 
 	function init():Void {
-		gl.disable(gl.DEPTH_TEST);
-		gl.disable(gl.CULL_FACE);
-		gl.disable(gl.DITHER);
+		GL.disable(GL.DEPTH_TEST);
+		GL.disable(GL.CULL_FACE);
+		GL.disable(GL.DITHER);
 
         #if ios screenBuffer = GL.getParameter(GL.FRAMEBUFFER_BINDING); #end
 
@@ -129,11 +128,11 @@ class Main extends snow.App{
 
 		if(OFFSCREEN_RENDER){
 			offScreenTarget = new RenderTarget(
-				Math.round(window.width*offScreenScale),
-				Math.round(window.height*offScreenScale),
+				Math.round(app.runtime.window_width()*offScreenScale),
+				Math.round(app.runtime.window_height()*offScreenScale),
 				gltoolbox.TextureTools.createTextureFactory({
-					channelType: gl.RGB,
-					dataType: gl.UNSIGNED_BYTE,
+					channelType: GL.RGB,
+					dataType: GL.UNSIGNED_BYTE,
 					filter: offScreenFilter
 				})
 			);
@@ -150,7 +149,7 @@ class Main extends snow.App{
 		mouseForceShader.lastMouse.data = lastMouseFluid;
 
 		var cellScale = 32;
-		fluid = new GPUFluid(Math.round(window.width*fluidScale), Math.round(window.height*fluidScale), cellScale, fluidIterations);
+		fluid = new GPUFluid(Math.round(app.runtime.window_width()*fluidScale), Math.round(app.runtime.window_height()*fluidScale), cellScale, fluidIterations);
 		fluid.updateDyeShader = updateDyeShader;
 		fluid.applyForcesShader = mouseForceShader;
 
@@ -183,7 +182,7 @@ class Main extends snow.App{
 		updateLastMouse();
 	}
 
-	function render (?w:Window):Void {
+	override function tick (delta:Float):Void {
 		// time = haxe.Timer.stamp();
 		// var dt = time - lastTime; //60fps ~ 0.016
 		// lastTime = time;
@@ -191,64 +190,64 @@ class Main extends snow.App{
 		//Render
 		//render to offScreen
 		if(OFFSCREEN_RENDER){
-			gl.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
-			gl.bindFramebuffer(gl.FRAMEBUFFER, offScreenTarget.frameBufferObject);
+			GL.viewport (0, 0, offScreenTarget.width, offScreenTarget.height);
+			GL.bindFramebuffer(GL.FRAMEBUFFER, offScreenTarget.frameBufferObject);
 		}else{
-			gl.viewport (0, 0, window.width, window.height);
-			gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+			GL.viewport (0, 0, app.runtime.window_width(), app.runtime.window_height());
+			GL.bindFramebuffer(GL.FRAMEBUFFER, screenBuffer);
 		}
 
-		gl.clearColor(0,0,0,1);
-		gl.clear(gl.COLOR_BUFFER_BIT);
+		GL.clearColor(0,0,0,1);
+		GL.clear(GL.COLOR_BUFFER_BIT);
 
 		// additive blending
-		gl.enable(gl.BLEND);
-		gl.blendFunc( gl.SRC_ALPHA, gl.SRC_ALPHA );
-		gl.blendEquation(gl.FUNC_ADD);
+		GL.enable(GL.BLEND);
+		GL.blendFunc( GL.SRC_ALPHA, GL.SRC_ALPHA );
+		GL.blendEquation(GL.FUNC_ADD);
 
 		if(renderParticlesEnabled) renderParticles();
 		if(renderFluidEnabled) renderTexture(fluid.dyeRenderTarget.readFromTexture);
 
-		gl.disable(gl.BLEND);
+		GL.disable(GL.BLEND);
 
 		//render offScreen texture to screen
 		if(OFFSCREEN_RENDER){
-			gl.viewport (0, 0, window.width, window.height);
-			gl.bindFramebuffer(gl.FRAMEBUFFER, screenBuffer);
+			GL.viewport (0, 0, app.runtime.window_width(), app.runtime.window_height());
+			GL.bindFramebuffer(GL.FRAMEBUFFER, screenBuffer);
 			renderTexture(offScreenTarget.texture);
 		}
 	}
 
 	inline function renderTexture(texture:GLTexture){
-		gl.bindBuffer (gl.ARRAY_BUFFER, textureQuad);
+		GL.bindBuffer (GL.ARRAY_BUFFER, textureQuad);
 
 		screenTextureShader.texture.data = texture;
 		
 		screenTextureShader.activate(true, true);
-		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+		GL.drawArrays(GL.TRIANGLE_STRIP, 0, 4);
 		screenTextureShader.deactivate();
 	}
 
 	inline function renderParticles():Void{
 		//set vertices
-		gl.bindBuffer(gl.ARRAY_BUFFER, particles.particleUVs);
+		GL.bindBuffer(GL.ARRAY_BUFFER, particles.particleUVs);
 
 		//set uniforms
 		renderParticlesShader.particleData.data = particles.particleData.readFromTexture;
 
 		//draw points
 		renderParticlesShader.activate(true, true);
-		gl.drawArrays(gl.POINTS, 0, particles.count);
+		GL.drawArrays(GL.POINTS, 0, particles.count);
 		renderParticlesShader.deactivate();
 	}
 
 	function updateSimulationTextures(){
 		//only resize if there is a change
 		var w:Int, h:Int;
-		w = Math.round(window.width*fluidScale); h = Math.round(window.height*fluidScale);
+		w = Math.round(app.runtime.window_width()*fluidScale); h = Math.round(app.runtime.window_height()*fluidScale);
 		if(w != fluid.width || h != fluid.height) fluid.resize(w, h);
 
-		w = Math.round(window.width*offScreenScale); h = Math.round(window.height*offScreenScale);
+		w = Math.round(app.runtime.window_width()*offScreenScale); h = Math.round(app.runtime.window_height()*offScreenScale);
 		if(w != offScreenTarget.width || h != offScreenTarget.height) offScreenTarget.resize(w, h);
 
 		if(particleCount != particles.count) particles.setCount(particleCount);
@@ -350,8 +349,8 @@ class Main extends snow.App{
 	}
 
 	//coordinate conversion
-	inline function windowToClipSpaceX(x:Float) return (x/window.width)*2 - 1;
-	inline function windowToClipSpaceY(y:Float) return ((window.height-y)/window.height)*2 - 1;
+	inline function windowToClipSpaceX(x:Float) return (x/app.runtime.window_width())*2 - 1;
+	inline function windowToClipSpaceY(y:Float) return ((app.runtime.window_height()-y)/app.runtime.window_height())*2 - 1;
 
 	override function onmousedown( x : Float , y : Float , button : Int, _, _){
 		this.isMouseDown = true; 
@@ -395,8 +394,8 @@ class Main extends snow.App{
 
 
 	// function updateTouchCoordinate(x:Float, y:Float){
-	// 	x = x*window.width;
-	// 	y = y*window.height;
+	// 	x = x*app.runtime.window_width();
+	// 	y = y*app.runtime.window_height();
 	// 	mouse.set(x, y);
 	// 	mouseFluid.set(
 	// 		windowToClipSpaceX(x),
