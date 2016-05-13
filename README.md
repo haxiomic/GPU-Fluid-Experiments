@@ -15,10 +15,16 @@ Install the dependencies:
 	haxelib git snow https://github.com/underscorediscovery/snow.git
 	haxelib git flow https://github.com/underscorediscovery/flow.git
 
-'shaderblox' and 'gltoolbox':
+other dependencies:
 
 	haxelib git shaderblox https://github.com/haxiomic/shaderblox.git
 	haxelib git gltoolbox https://github.com/haxiomic/GLToolbox.git
+	haxelib git linc_openal https://github.com/snowkit/linc_openal.git
+	haxelib git linc_timestamp https://github.com/snowkit/linc_timestamp.git
+	haxelib git linc_stb https://github.com/snowkit/linc_stb.git
+	haxelib git linc_ogg https://github.com/snowkit/linc_ogg.git
+	haxelib git linc_sdl https://github.com/snowkit/linc_sdl.git
+	haxelib git linc_opengl https://github.com/snowkit/linc_opengl.git
 
 and you should be good to go
 
