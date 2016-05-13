@@ -15,7 +15,7 @@ Install the dependencies:
 	haxelib git snow https://github.com/underscorediscovery/snow.git
 	haxelib git flow https://github.com/underscorediscovery/flow.git
 
-'shaderblox' and 'gltoolbox':
+other dependencies:
 
 	haxelib git shaderblox https://github.com/haxiomic/shaderblox.git
 	haxelib git gltoolbox https://github.com/haxiomic/GLToolbox.git
