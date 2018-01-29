@@ -173,10 +173,9 @@
 							<h3>I hate spam too so I'll only send you a single email when it's ready</h3>
 						</div>
 						<div class="email-form">	
-							<form accept-charset="UTF-8" action="https://formkeep.com/f/83d0032d93ff" method="POST">
-								<input type="text" name="email" size="40" placeholder="email address">
+							<form action="https://docs.google.com/forms/d/e/1FAIpQLSfIbYVXmVlHA2QXBhsd87OO0fVoYgjZ1NR6hNGAm-skU66IQw/formResponse" id="mG61Hd" method="POST" target="_self">
+								<input type="email" name="emailAddress" required="" autocomplete="email" size="40" placeholder="email address">
 								<button type="submit">Submit</button>
-								<input type="hidden" name="utf8" value="✓">
 							</form>
 						</div>
 					</div>
@@ -198,7 +197,7 @@
 		   e.preventDefault();//don't redirect
 		   if(submitted)return;
 		   var $this = $(this);
-           var $emailField = $this.find('input[name=email]');
+           var $emailField = $this.find('input[name=emailAddress]');
            var $submitButton = $this.find('button[type=submit]');
 
 		   if(!$emailField.val().trim()){
@@ -207,7 +206,7 @@
 		   }
 
 		   var data = {
-		       'email': $emailField.val()
+		       'emailAddress': $emailField.val()
 		   };
 
 		   $.ajax({
