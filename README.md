@@ -2,7 +2,10 @@
 
 ### [Demo](http://haxiomic.github.io/GPU-Fluid-Experiments/html5/)
 
-If you have an idea and you want to collaborate, feel free to get in touch with me [haxiomic@gmail.com](mailto:haxiomic@gmail.com)
+This repo is a little old and dusty and likely doesn't build with the latest tools, If you're looking for a version with working build instructions check out this fork by [Oliver Curtis](https://github.com/ollyc2015) which adds some interesting effects.
 
-### Checkout the [snow branch](https://github.com/haxiomic/GPU-Fluid-Experiments/tree/snow) for build instructions
-**(master branch not building)**
+I'm currently working on a rewrite so watch this space :)
+
+------
+
+If you have an idea and you want to collaborate, feel free to get in touch with me [haxiomic@gmail.com](mailto:haxiomic@gmail.com)
