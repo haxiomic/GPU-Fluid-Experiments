@@ -16,12 +16,14 @@ class GPUFluid{
 
 	public var cellSize (default, set) : Float;
 	public var solverIterations         : Int;
+	public var viscosity (default,set)	: Float ;
 
 	public var aspectRatio (default, null) : Float;
 
 	//Render Targets
 	public var velocityRenderTarget   (default, null) : RenderTarget2Phase;
 	public var pressureRenderTarget   (default, null) : RenderTarget2Phase;
+	public var diffusionRenderTarget  (default, null) : RenderTarget2Phase;
 	public var divergenceRenderTarget (default, null) : RenderTarget;
 	public var dyeRenderTarget        (default, null) : RenderTarget2Phase;
 
@@ -33,18 +35,21 @@ class GPUFluid{
 	var advectShader                    : Advect = new Advect();
 	var divergenceShader                : Divergence = new Divergence();
 	var pressureSolveShader             : PressureSolve = new PressureSolve();
+	var diffusionSolveShader            : DiffusionSolve = new DiffusionSolve();
 	var pressureGradientSubstractShader : PressureGradientSubstract = new PressureGradientSubstract();
 
 	//Geometry
 	var textureQuad : GLBuffer;
 
-	public function new(gl:GLRenderContext, width:Int, height:Int, cellSize:Float = 8, solverIterations:Int = 18){
+	public function new(gl:GLRenderContext, width:Int, height:Int, cellSize:Float = 8, solverIterations:Int = 18, viscosity:Float = 1){
 		this.gl = gl;
 		this.width = width;
 		this.height = height;
 		this.solverIterations = solverIterations;
 		this.aspectRatio = this.width/this.height;
 		this.cellSize = cellSize;
+		this.viscosity = viscosity ;
+
 
 		var texture_float_linear_supported = true;
 		//setup gl
@@ -64,6 +69,7 @@ class GPUFluid{
 
 		velocityRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
 		pressureRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
+		diffusionRenderTarget = new RenderTarget2Phase(width, height, nearestFactory);
 		divergenceRenderTarget = new RenderTarget(width, height, nearestFactory);
 		dyeRenderTarget = new RenderTarget2Phase(
 			width,
@@ -78,6 +84,7 @@ class GPUFluid{
 		updateCoreShaderUniforms(advectShader);
 		updateCoreShaderUniforms(divergenceShader);
 		updateCoreShaderUniforms(pressureSolveShader);
+		updateCoreShaderUniforms(diffusionSolveShader);
 		updateCoreShaderUniforms(pressureGradientSubstractShader);
 	}
 
@@ -92,6 +99,8 @@ class GPUFluid{
 		applyForces(dt);
 
 		computeDivergence();
+	
+		solveDiffusion() ;
 		solvePressure();
 		subtractPressureGradient();
 
@@ -102,6 +111,7 @@ class GPUFluid{
 	public inline function resize(width:Int, height:Int){
 		velocityRenderTarget.resize(width, height);
 		pressureRenderTarget.resize(width, height);
+		diffusionRenderTarget.resize(width, height);
 		divergenceRenderTarget.resize(width, height);
 		dyeRenderTarget.resize(width, height);
 		this.width = width;
@@ -111,6 +121,7 @@ class GPUFluid{
 	public inline function clear(){
 		velocityRenderTarget.clear(gl.COLOR_BUFFER_BIT);
 		pressureRenderTarget.clear(gl.COLOR_BUFFER_BIT);
+		diffusionRenderTarget.clear(gl.COLOR_BUFFER_BIT);
 		dyeRenderTarget.clear(gl.COLOR_BUFFER_BIT);
 	}
 
@@ -143,8 +154,25 @@ class GPUFluid{
 		renderShaderTo(divergenceShader, divergenceRenderTarget);
 	}
 
+		
+	inline function solveDiffusion(){
+		diffusionSolveShader.velocity.set(divergenceRenderTarget.texture);
+		diffusionSolveShader.activate(true, true);
+
+		for (i in 0...solverIterations) {
+			diffusionSolveShader.diffusion.set(diffusionRenderTarget.readFromTexture);
+			//(not using renderShaderTo to allow for minor optimization)
+			diffusionSolveShader.setUniforms();
+			diffusionRenderTarget.activate();
+			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+			diffusionRenderTarget.swap();
+		}
+		
+		diffusionSolveShader.deactivate();
+	}
+	
 	inline function solvePressure(){
-		pressureSolveShader.divergence.set(divergenceRenderTarget.texture);
+		pressureSolveShader.divergence.set(diffusionRenderTarget.readFromTexture);
 		pressureSolveShader.activate(true, true);
 
 		for (i in 0...solverIterations) {
@@ -215,6 +243,15 @@ class GPUFluid{
 		pressureSolveShader.alpha.set(-cellSize*cellSize);
 		return cellSize; 
 	}
+	
+	inline function set_viscosity(v:Float):Float {
+		var alpha:Float ;
+		viscosity = v ;
+		alpha = viscosity * cellSize * cellSize / 1 ;
+		diffusionSolveShader.alpha.set( alpha);
+		diffusionSolveShader.beta.set(1.0 / (4.0 + alpha));
+		return viscosity; 
+	}
 }
 
 @:vert('#pragma include("Source/shaders/glsl/fluid/texel-space.vert")')
@@ -229,6 +266,10 @@ class Divergence extends FluidBase{}
 
 @:frag('#pragma include("Source/shaders/glsl/fluid/pressure-solve.frag")')
 class PressureSolve extends FluidBase{}
+
+@:frag('#pragma include("Source/shaders/glsl/fluid/diffusion-solve.frag")')
+class DiffusionSolve extends FluidBase { }
+
 
 @:frag('#pragma include("Source/shaders/glsl/fluid/pressure-gradient-subtract.frag")')
 class PressureGradientSubstract extends FluidBase{}
